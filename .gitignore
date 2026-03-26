@@ -33,6 +33,7 @@ x/result.md
 # Runtime/generated outputs - y
 y/dbd_result.json
 y/dbd_result_decrypted.json
+y/dumps/
 y/debug/
 
 # Runtime/generated outputs - z
