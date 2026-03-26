@@ -1,0 +1,51 @@
+# Python cache / compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.*
+
+# Secrets
+config.json
+NotOte-*.txt
+
+# Tooling
+.vscode/
+.history/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
+# Runtime/generated outputs - x
+x/dumps/*.json
+x/dumps/*.txt
+x/result.md
+
+# Runtime/generated outputs - y
+y/dbd_result.json
+y/dbd_result_decrypted.json
+y/debug/
+
+# Runtime/generated outputs - z
+z/z_compact_data.json
+z/z_summary.md
+
+# Runtime/generated outputs - s_sdk
+s_sdk/settrade_company_data.json
+s_sdk/settrade_company_data.md
+
+# Runtime/generated outputs - s_scape
+s_scape/settrade_*.json
+s_scape/settrade_*.md
+s_scape/settrade_*.html
+s_scape/probe_*.json
+s_scape/probe_*.png

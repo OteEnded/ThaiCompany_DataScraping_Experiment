@@ -1,0 +1,16 @@
+{
+  "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY",
+  "SILICONFLOW_API_KEY": "YOUR_SILICONFLOW_API_KEY",
+  "SETTRADE": {
+    "username": "YOUR_SETTRADE_USERNAME",
+    "app_id": "YOUR_SETTRADE_APP_ID",
+    "app_secret": "YOUR_SETTRADE_APP_SECRET",
+    "broker_id": "SANDBOX_OR_BROKER_ID",
+    "app_code": "SANDBOX_OR_APP_CODE",
+    "equity_account_no": "YOUR_EQUITY_ACCOUNT_NO",
+    "derivatives_account_no": "YOUR_DERIVATIVES_ACCOUNT_NO",
+    "default_symbol": "AOT",
+    "pin": "YOUR_SETTRADE_PIN",
+    "is_auto_queue": false
+  }
+}
