@@ -1,6 +1,7 @@
 import argparse
 import base64
 import json
+import re
 import time
 import zlib
 from datetime import datetime
@@ -14,6 +15,66 @@ from playwright.sync_api import sync_playwright
 
 
 BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_STORAGE_STATE = BASE_DIR / "storage_state.json"
+
+
+def parse_api_response_body(response):
+    """Parse API response body with a tolerant fallback path.
+
+    Some DBD endpoints return JSON payloads with non-standard headers, which
+    can fail with response.json(). In that case, read text and parse manually.
+    """
+    try:
+        return response.json()
+    except Exception:
+        pass
+
+    try:
+        text = response.text()
+    except Exception:
+        return None
+
+    if not isinstance(text, str) or not text.strip():
+        return None
+
+    try:
+        return json.loads(text)
+    except Exception:
+        blocked = "incapsula incident id" in text.lower() or "_incapsula_resource" in text.lower()
+        if blocked:
+            return {"_blocked_by_incapsula": True, "_raw_text": text[:500]}
+        return {"_raw_text": text}
+
+
+def extract_token_from_html(html: str) -> str:
+    if not isinstance(html, str) or not html:
+        return ""
+    # Matches Nuxt public config token style: "token":"<jwt>"
+    m = re.search(r'"token"\s*:\s*"([A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+)"', html)
+    return m.group(1) if m else ""
+
+
+def is_blocked_payload(data) -> bool:
+    return isinstance(data, dict) and data.get("_blocked_by_incapsula") is True
+
+
+def is_blocked_text(text: str) -> bool:
+    if not isinstance(text, str):
+        return False
+    lowered = text.lower()
+    return "incapsula incident id" in lowered or "_incapsula_resource" in lowered
+
+
+def normalize_captured_payload(data):
+    """Normalize payloads and flag anti-bot challenge responses.
+
+    Returns a tuple: (normalized_data, blocked)
+    """
+    if is_blocked_payload(data):
+        return data, True
+    if is_blocked_text(data):
+        return {"_blocked_by_incapsula": True, "_raw_text": data[:500]}, True
+    return data, False
 
 
 def b64url_decode(value: str) -> bytes:
@@ -161,6 +222,13 @@ def try_decrypt_results(results: dict, token_candidates: list[str]) -> dict:
         "enc_key_found": bool(selected_enc_key),
         "token_payload": selected_token_payload,
         "enc_key_candidates": len(enc_keys),
+        "source_status": results.get("debug", {}).get("status"),
+        "source_debug": {
+            "blocked_count": results.get("debug", {}).get("blocked_count", 0),
+            "blocked_run": results.get("debug", {}).get("blocked_run", False),
+            "attempts": results.get("debug", {}).get("attempts", 0),
+            "storage_state_used": results.get("debug", {}).get("storage_state_used"),
+        },
         "profile": decrypt_with_all_keys(results.get("profile"), api_paths["profile"]),
         "financial": decrypt_with_all_keys(results.get("financial"), api_paths["financial"]),
         "financial_sections": {},
@@ -227,7 +295,104 @@ def trigger_financial_fetches(page, token: str, jp_type: str, jp_no: str) -> Non
         )
 
 
-def get_company_data(juristic_id: str, headless: bool = False):
+def fetch_api_payloads(page, token: str, urls: list[str]) -> list[dict]:
+        return page.evaluate(
+                """
+                async ({ token, urls }) => {
+                    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                    const out = [];
+                    for (const url of urls) {
+                        try {
+                            const resp = await fetch(url, { headers, credentials: 'include' });
+                            const text = await resp.text();
+                            let data = null;
+                            try {
+                                data = JSON.parse(text);
+                            } catch (_) {
+                                data = text || null;
+                            }
+                            out.push({ url, status: resp.status, ok: resp.ok, data });
+                        } catch (e) {
+                            out.push({ url, status: -1, ok: false, data: { _fetch_error: String(e) } });
+                        }
+                    }
+                    return out;
+                }
+                """,
+                {"token": token, "urls": urls},
+        )
+
+
+def open_profile_via_search(page, juristic_id: str) -> bool:
+    """Open company profile using the homepage search flow.
+
+    This mirrors real user behavior and avoids cases where direct profile URLs
+    do not fully hydrate data in the frontend app.
+    """
+    page.goto("https://datawarehouse.dbd.go.th/", wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_timeout(3000)
+
+    search_input = page.locator("input[placeholder*='เลขทะเบียนนิติบุคคล']").first
+    if search_input.count() == 0:
+        search_input = page.locator("form#form input.form-control").first
+    if search_input.count() == 0:
+        return False
+
+    search_input.click()
+    search_input.fill(juristic_id)
+    page.wait_for_timeout(1500)
+
+    # Prefer explicit suggestion click (HAR flow), fallback to Enter.
+    suggestion = page.locator("#suggestionContent a[href*='/company/profile/']").first
+    if suggestion.count() > 0:
+        try:
+            suggestion.click(timeout=5000)
+        except Exception:
+            page.keyboard.press("Enter")
+    else:
+        page.keyboard.press("Enter")
+
+    page.wait_for_timeout(7000)
+    return "/company/profile/" in page.url
+
+
+def hydrate_profile_page(page, juristic_id: str) -> bool:
+    """Attempt to open profile page via user-like flow with a direct fallback."""
+    target_url = f"https://datawarehouse.dbd.go.th/company/profile/{juristic_id}"
+    opened = False
+    try:
+        opened = open_profile_via_search(page, juristic_id)
+    except Exception:
+        opened = False
+
+    if not opened:
+        print("Search flow fallback to direct URL:", target_url)
+        page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
+
+    page.wait_for_timeout(12000)
+    return "/company/profile/" in page.url
+
+
+def trigger_finance_tab_clicks(page) -> None:
+    finance_selectors = [
+        "a:has-text('ข้อมูลงบการเงิน')",
+        "button:has-text('ข้อมูลงบการเงิน')",
+        "a:has-text('งบการเงิน')",
+        "button:has-text('งบการเงิน')",
+        "a:has-text('ประวัติการส่งงบการเงิน')",
+        "button:has-text('ประวัติการส่งงบการเงิน')",
+    ]
+    for selector in finance_selectors:
+        try:
+            locator = page.locator(selector).first
+            if locator.count() > 0:
+                locator.click(timeout=5000)
+                page.wait_for_timeout(3000)
+        except Exception:
+            continue
+
+
+def get_company_data(juristic_id: str, headless: bool = False, storage_state_path: Path | None = None):
     results = {
         "profile": None,
         "financial": None,
@@ -247,22 +412,48 @@ def get_company_data(juristic_id: str, headless: bool = False):
             "committees_url": None,
             "sign_committees_url": None,
             "mergers_url": None,
+            "blocked_urls": [],
+            "blocked_count": 0,
+            "blocked_run": False,
+            "status": "unknown",
+            "attempts": 0,
+            "storage_state_used": None,
         },
     }
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
-        context = browser.new_context()
+        context_kwargs = {}
+        if storage_state_path and storage_state_path.exists():
+            context_kwargs["storage_state"] = str(storage_state_path)
+            results["debug"]["storage_state_used"] = str(storage_state_path)
+        context = browser.new_context(**context_kwargs)
         page = context.new_page()
 
         def handle_response(response):
             url = response.url
             results["debug"]["captured_urls"].append(url)
 
+            # Keep URL markers even if payload parsing fails.
+            if "/company-profiles/info/" in url and not results["debug"].get("profile_url"):
+                results["debug"]["profile_url"] = url
+            elif "/company-profiles/committee-signs/" in url and not results["debug"].get("sign_committees_url"):
+                results["debug"]["sign_committees_url"] = url
+            elif "/company-profiles/committees/" in url and not results["debug"].get("committees_url"):
+                results["debug"]["committees_url"] = url
+            elif "/company-profiles/mergers/" in url and not results["debug"].get("mergers_url"):
+                results["debug"]["mergers_url"] = url
+            elif "/api/v1/fin/" in url and not results["debug"].get("financial_url"):
+                results["debug"]["financial_url"] = url
+
             if "/api/" in url:
-                try:
-                    data = response.json()
-                except Exception:
+                data = parse_api_response_body(response)
+                if data is None:
+                    return
+
+                data, blocked = normalize_captured_payload(data)
+                if blocked:
+                    results["debug"]["blocked_urls"].append(url)
                     return
 
                 if "/company-profiles/info/" in url:
@@ -307,44 +498,83 @@ def get_company_data(juristic_id: str, headless: bool = False):
 
         context.on("response", handle_response)
 
-        target_url = f"https://datawarehouse.dbd.go.th/company/profile/{juristic_id}"
-        print("Loading:", target_url)
-        page.goto(target_url, wait_until="domcontentloaded", timeout=60000)
-        results["debug"]["page_url"] = page.url
-        results["debug"]["page_title"] = page.title()
+        print("Loading via search flow:", juristic_id)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            results["debug"]["attempts"] = attempt
+            hydrate_profile_page(page, juristic_id)
+            results["debug"]["page_url"] = page.url
+            results["debug"]["page_title"] = page.title()
 
-        page.wait_for_timeout(15000)
+            trigger_finance_tab_clicks(page)
 
-        # Trigger financial API calls by opening finance-related tabs.
-        finance_selectors = [
-            "a:has-text('ข้อมูลงบการเงิน')",
-            "button:has-text('ข้อมูลงบการเงิน')",
-            "a:has-text('งบการเงิน')",
-            "button:has-text('งบการเงิน')",
-            "a:has-text('ประวัติการส่งงบการเงิน')",
-            "button:has-text('ประวัติการส่งงบการเงิน')",
-        ]
-        for selector in finance_selectors:
+            profile_url = results.get("debug", {}).get("profile_url") or ""
+            jp_type, jp_no = extract_company_key_from_profile_url(profile_url, juristic_id)
             try:
-                locator = page.locator(selector).first
-                if locator.count() > 0:
-                    locator.click(timeout=5000)
-                    page.wait_for_timeout(4000)
+                token_for_fetch = page.evaluate("() => globalThis.__NUXT__?.config?.public?.token || ''")
             except Exception:
-                continue
+                token_for_fetch = ""
 
-        # Fallback: trigger finance endpoints directly with the active browser session.
-        profile_url = results.get("debug", {}).get("profile_url") or ""
-        jp_type, jp_no = extract_company_key_from_profile_url(profile_url, juristic_id)
-        try:
-            token_for_fetch = page.evaluate("() => globalThis.__NUXT__?.config?.public?.token || ''")
-        except Exception:
-            token_for_fetch = ""
-        try:
-            trigger_financial_fetches(page, token_for_fetch, jp_type, jp_no)
-            page.wait_for_timeout(5000)
-        except Exception:
-            pass
+            try:
+                trigger_financial_fetches(page, token_for_fetch, jp_type, jp_no)
+                page.wait_for_timeout(3500)
+            except Exception:
+                pass
+
+            try:
+                jp_type_for_profile = "7"
+                profile_no = juristic_id
+                thai_year = datetime.now().year + 543
+                years = [str(thai_year - i) for i in range(0, 7)]
+                urls = [
+                    f"/api/v1/company-profiles/info/{jp_type_for_profile}/{profile_no}",
+                    f"/api/v1/company-profiles/committees/{jp_type_for_profile}/{profile_no}",
+                    f"/api/v1/company-profiles/committee-signs/{jp_type_for_profile}/{profile_no}",
+                    f"/api/v1/company-profiles/mergers/{jp_type_for_profile}/{profile_no}",
+                ]
+                for y in years:
+                    urls.append(f"/api/v1/fin/balancesheet/year/{jp_type}/{jp_no}?fiscalYear={y}")
+                    urls.append(f"/api/v1/fin/submit/{jp_type}/{jp_no}?fiscalYear={y}")
+
+                fetched = fetch_api_payloads(page, token_for_fetch, urls)
+                for item in fetched:
+                    url = item.get("url", "")
+                    data = item.get("data")
+                    if data is None:
+                        continue
+                    data, blocked = normalize_captured_payload(data)
+                    if blocked:
+                        results["debug"]["blocked_urls"].append(url)
+                        continue
+
+                    if "/company-profiles/info/" in url and not results["profile"]:
+                        results["profile"] = data
+                        results["debug"]["profile_url"] = url
+                    elif "/company-profiles/committee-signs/" in url and not results["sign_committees"]:
+                        results["sign_committees"] = data
+                        results["debug"]["sign_committees_url"] = url
+                    elif "/company-profiles/committees/" in url and not results["committees"]:
+                        results["committees"] = data
+                        results["debug"]["committees_url"] = url
+                    elif "/company-profiles/mergers/" in url and not results["mergers"]:
+                        results["mergers"] = data
+                        results["debug"]["mergers_url"] = url
+                    elif "/api/v1/fin/" in url:
+                        path = normalize_aad_hint(url).split("?", 1)[0]
+                        section_name = path.rsplit("/", 1)[0].split("/api/v1/fin/", 1)[-1].replace("/", "_")
+                        key = f"{section_name}_{len(results['financial_sections']) + 1}"
+                        results["financial_sections"][key] = {"url": url, "data": data}
+                        results["financial"] = data
+                        results["debug"]["financial_url"] = url
+            except Exception:
+                pass
+
+            got_profile = isinstance(results.get("profile"), dict)
+            got_financial = isinstance(results.get("financial"), (dict, list))
+            if got_profile and got_financial:
+                break
+
+            page.wait_for_timeout(3000 * attempt)
 
         try:
             nuxt_data = page.evaluate(
@@ -366,10 +596,39 @@ def get_company_data(juristic_id: str, headless: bool = False):
         except Exception:
             pass
 
-        if not results["profile"] and not results["financial"]:
+        # Fallback: extract token from HTML when runtime object is unavailable.
+        if not results["debug"].get("nuxt_token"):
+            try:
+                html_token = extract_token_from_html(page.content())
+                if html_token:
+                    results["debug"]["nuxt_token"] = html_token
+            except Exception:
+                pass
+
+        blocked_urls = list(dict.fromkeys(results.get("debug", {}).get("blocked_urls") or []))
+        results["debug"]["blocked_urls"] = blocked_urls
+        results["debug"]["blocked_count"] = len(blocked_urls)
+        results["debug"]["blocked_run"] = len(blocked_urls) > 0
+        has_profile = isinstance(results.get("profile"), dict)
+        has_financial = isinstance(results.get("financial"), (dict, list))
+        if has_profile and has_financial:
+            results["debug"]["status"] = "ok"
+        elif results["debug"]["blocked_run"]:
+            results["debug"]["status"] = "blocked"
+        else:
+            results["debug"]["status"] = "partial"
+
+        if not has_profile and not has_financial:
             debug_dir = BASE_DIR / "dumps"
             debug_dir.mkdir(exist_ok=True)
             (debug_dir / "dbd_page.html").write_text(page.content(), encoding="utf-8")
+
+        # Persist browser state so next run can reuse challenge-passed cookies.
+        if storage_state_path:
+            try:
+                context.storage_state(path=str(storage_state_path))
+            except Exception:
+                pass
 
         browser.close()
 
@@ -380,7 +639,7 @@ def main():
     parser = argparse.ArgumentParser(description="Capture DBD company data with Playwright")
     parser.add_argument(
         "--juristic-id",
-        default="70107561000081",
+        default="0107561000081",
         help="Juristic ID to open on DBD DataWarehouse",
     )
     parser.add_argument(
@@ -388,9 +647,20 @@ def main():
         action="store_true",
         help="Run browser in headless mode",
     )
+    parser.add_argument(
+        "--storage-state",
+        default=str(DEFAULT_STORAGE_STATE),
+        help="Path to Playwright storage state JSON for cookie/session reuse",
+    )
+    parser.add_argument(
+        "--no-storage-state",
+        action="store_true",
+        help="Disable loading/saving storage state for this run",
+    )
     args = parser.parse_args()
 
-    data = get_company_data(args.juristic_id, headless=args.headless)
+    storage_state_path = None if args.no_storage_state else Path(args.storage_state)
+    data = get_company_data(args.juristic_id, headless=args.headless, storage_state_path=storage_state_path)
     token_candidates = collect_tokens_from_results(data)
     nuxt_token = data.get("debug", {}).get("nuxt_token")
     if isinstance(nuxt_token, str) and nuxt_token.count(".") >= 2:
@@ -418,6 +688,24 @@ def main():
         print("Financial data found")
     else:
         print("No financial data captured")
+
+    blocked_urls = data.get("debug", {}).get("blocked_urls") or []
+    if blocked_urls:
+        print(f"Incapsula blocked {len(blocked_urls)} API response(s)")
+        print("Try non-headless mode and rerun if profile/financial is empty")
+
+    status = data.get("debug", {}).get("status")
+    if status == "ok":
+        print("Run status: OK")
+    elif status == "blocked":
+        print("Run status: BLOCKED (challenge response captured instead of API JSON)")
+    else:
+        print(f"Run status: {status}")
+
+    if data.get("debug", {}).get("storage_state_used"):
+        print("Storage state loaded:", data["debug"]["storage_state_used"])
+    elif not args.no_storage_state:
+        print("Storage state file not found yet; it will be created after this run")
 
     if decrypted.get("enc_key_found"):
         print("encKey found in JWT payload")

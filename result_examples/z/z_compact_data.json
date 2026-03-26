@@ -1,23 +1,168 @@
 {
   "profile_snapshot": {
-    "name_th": null,
-    "name_en": null,
-    "juristic_id": null,
-    "status": null,
-    "business": null,
-    "fiscal_year": null,
-    "revenue": null,
-    "net_profit": null,
-    "profit_growth_pct": null,
-    "total_assets": null,
-    "equity": null,
-    "debt_to_equity": null,
-    "latest_submit_year": null,
-    "latest_submit_date": null
+    "name_th": "โอสถสภา จำกัด (มหาชน)",
+    "name_en": "OSOTSPA PUBLIC COMPANY LIMITED",
+    "juristic_id": "0107561000081",
+    "status": "ยังดำเนินกิจการอยู่",
+    "business": "ผลิต",
+    "fiscal_year": "2567",
+    "revenue": 19820793932,
+    "net_profit": 1822280079,
+    "profit_growth_pct": -27.03,
+    "total_assets": 25154433356,
+    "equity": 16136915871,
+    "debt_to_equity": 0.55,
+    "latest_submit_year": "2567",
+    "latest_submit_date": [
+      2025,
+      5,
+      20
+    ]
   },
   "financial_deep_dive": {
-    "latest_financial": {},
-    "yearly_financials": [],
-    "submit_history": []
+    "latest_financial": {
+      "fiscal_year": "2567",
+      "revenue": null,
+      "net_profit": null,
+      "assets": 25154433356,
+      "equity": 16136915871,
+      "debt_to_equity": 0.5588,
+      "debt_to_asset": 0.3585,
+      "current_ratio": 0.787,
+      "gross_profit_margin": 24.1607,
+      "operating_profit_margin": 10.3502,
+      "net_profit_margin": 9.1938,
+      "return_on_asset": 7.417,
+      "return_on_equity": 11.144
+    },
+    "yearly_financials": [
+      {
+        "fiscal_year": "2563",
+        "revenue": null,
+        "net_profit": null,
+        "assets": 22906428711,
+        "equity": 18270316420,
+        "debt_to_equity": 0.2538,
+        "debt_to_asset": 0.2024,
+        "current_ratio": 1.8057,
+        "gross_profit_margin": 0,
+        "operating_profit_margin": 16.5265,
+        "net_profit_margin": 15.073,
+        "return_on_asset": 15.0654,
+        "return_on_equity": 18.9259
+      },
+      {
+        "fiscal_year": "2564",
+        "revenue": null,
+        "net_profit": null,
+        "assets": 24902860268,
+        "equity": 19112417459,
+        "debt_to_equity": 0.303,
+        "debt_to_asset": 0.2325,
+        "current_ratio": 1.3028,
+        "gross_profit_margin": 0,
+        "operating_profit_margin": 16.037,
+        "net_profit_margin": 14.7466,
+        "return_on_asset": 13.7264,
+        "return_on_equity": 17.5548
+      },
+      {
+        "fiscal_year": "2565",
+        "revenue": null,
+        "net_profit": null,
+        "assets": 25325008146,
+        "equity": 18528325649,
+        "debt_to_equity": 0.3668,
+        "debt_to_asset": 0.2684,
+        "current_ratio": 0.9677,
+        "gross_profit_margin": 0,
+        "operating_profit_margin": 12.955,
+        "net_profit_margin": 12.4919,
+        "return_on_asset": 10.444,
+        "return_on_equity": 13.9365
+      },
+      {
+        "fiscal_year": "2566",
+        "revenue": null,
+        "net_profit": null,
+        "assets": 23983417198,
+        "equity": 16567445431,
+        "debt_to_equity": 0.4476,
+        "debt_to_asset": 0.3092,
+        "current_ratio": 0.9289,
+        "gross_profit_margin": 20.6666,
+        "operating_profit_margin": 13.0901,
+        "net_profit_margin": 12.3224,
+        "return_on_asset": 10.1307,
+        "return_on_equity": 14.2333
+      },
+      {
+        "fiscal_year": "2567",
+        "revenue": null,
+        "net_profit": null,
+        "assets": 25154433356,
+        "equity": 16136915871,
+        "debt_to_equity": 0.5588,
+        "debt_to_asset": 0.3585,
+        "current_ratio": 0.787,
+        "gross_profit_margin": 24.1607,
+        "operating_profit_margin": 10.3502,
+        "net_profit_margin": 9.1938,
+        "return_on_asset": 7.417,
+        "return_on_equity": 11.144
+      }
+    ],
+    "submit_history": [
+      {
+        "submit_year": "2563",
+        "submit_date": [
+          2021,
+          5,
+          15
+        ],
+        "auditor_code": "4195",
+        "status_code": "1"
+      },
+      {
+        "submit_year": "2564",
+        "submit_date": [
+          2022,
+          5,
+          20
+        ],
+        "auditor_code": "5155",
+        "status_code": "1"
+      },
+      {
+        "submit_year": "2565",
+        "submit_date": [
+          2023,
+          5,
+          18
+        ],
+        "auditor_code": "5155",
+        "status_code": "1"
+      },
+      {
+        "submit_year": "2566",
+        "submit_date": [
+          2024,
+          5,
+          23
+        ],
+        "auditor_code": "8420",
+        "status_code": "1"
+      },
+      {
+        "submit_year": "2567",
+        "submit_date": [
+          2025,
+          5,
+          20
+        ],
+        "auditor_code": "8413",
+        "status_code": "1"
+      }
+    ]
   }
 }

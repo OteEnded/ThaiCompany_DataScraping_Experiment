@@ -91,6 +91,9 @@ python x/x.py
 # DBD scraper (company registration data)
 python y/y.py --juristic-id 70107561000081
 
+# DBD scraper (recommended, non-headless + persistent session state)
+python y/y.py --juristic-id 0107561000081
+
 # AI summary from DBD output
 python z/z.py
 
@@ -122,6 +125,13 @@ To keep this README short, full examples are stored in `result_examples/`:
 - s_scape:
   - [result_examples/s_scape/settrade_OSP.json](result_examples/s_scape/settrade_OSP.json)
   - [result_examples/s_scape/settrade_OSP.md](result_examples/s_scape/settrade_OSP.md)
+
+Notes for y examples:
+- `dbd_result.json` may contain `_raw_text` payloads when DBD returns Incapsula challenge HTML instead of API JSON.
+- `dbd_result_decrypted.json` can show `enc_key_found=false` (or empty profile/financial) when no valid JWT/encKey is available during that run.
+- Check `debug.blocked_urls` in `dbd_result.json` to confirm anti-bot blocking.
+- `debug.status` in `dbd_result.json` reports one of `ok`, `partial`, or `blocked`.
+- `source_status` in `dbd_result_decrypted.json` mirrors the upstream run status for quick downstream checks.
 
 ## Settrade Scraper Data (`s_scape/s_scrape.py`)
 
@@ -183,7 +193,22 @@ Minimal structure:
 
 - `z/z.py` reads from `y/dbd_result_decrypted.json` and writes to `z/z_summary.md`.
 - `x/x.py` writes outputs under `x/dumps/` (not `x/result.md`).
-- `y/y.py` can return empty profile/financial payloads when DBD anti-bot blocks full page hydration; retry in non-headless mode and wait for full page render.
+- `y/y.py` uses homepage search-flow first (same as manual tax-id search) and then falls back to direct profile URL.
+- `y/y.py` can return empty profile/financial payloads when DBD anti-bot (Incapsula) blocks API responses.
+- For best chance to get valid y results, run non-headless and let the page finish rendering:
+
+```powershell
+python y/y.py --juristic-id 0107561000081
+```
+
+- `y/y.py` now reuses browser session cookies in `y/storage_state.json` across runs to improve reliability after a successful/challenge-passed session.
+- To disable this behavior for a clean one-off run:
+
+```powershell
+python y/y.py --juristic-id 0107561000081 --no-storage-state
+```
+
+- When blocked, details are logged in `y/dbd_result.json` under `debug.blocked_urls`.
 - `s_scape/s_scrape.py` launches a headless Chromium browser to obtain a live session, then calls Settrade's REST APIs via in-page `fetch()` — direct `requests` calls get 403.
 - Keep `config.json` at root so all processes can share API keys and credentials.
 
