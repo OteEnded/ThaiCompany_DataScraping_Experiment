@@ -4,6 +4,23 @@ Repository name: ThaiCompany_DataScraping_Experiment
 
 This repository is a multi-source data collection and analysis playground focused on company data from Thai market and registry sources.
 
+## Quick Start (How To Run)
+
+Install required Python packages in your active Python environment:
+
+```powershell
+pip install requests playwright cryptography settrade-v2
+python -m playwright install chromium
+```
+
+Create your local config file from the template:
+
+```powershell
+Copy-Item config.example.json config.json
+```
+
+Then edit `config.json` with your own keys and credentials.
+
 This workspace is organized into five process folders:
 
 - `x/` — AI-powered web search (Brave + SiliconFlow LLM)
@@ -23,6 +40,12 @@ Root-level shared files:
 AI_Search/
   config.json
   README.md
+  result_examples/
+    x/
+    y/
+    z/
+    s_sdk/
+    s_scape/
   x/
     x.py
     dumps/
@@ -79,152 +102,26 @@ python s_scape/s_scrape.py --symbol OSP --headless
 python s_scape/s_scrape.py --symbol AOT --headless
 ```
 
-## Result Examples (Per Folder)
+## Result Examples (From Latest Run)
 
-### x/ (Search + LLM)
+To keep this README short, full examples are stored in `result_examples/`:
 
-Generated files:
-- `x/dumps/siliconflow_search_query_built_result.json`
-- `x/dumps/last_brave_search_result.json`
-- `x/dumps/final_result.txt`
-
-Example (`x/dumps/siliconflow_search_query_built_result.json`):
-
-```json
-{
-  "user_input": "บรษท โอสถสภา จำกด (มหาชน) OSP",
-  "decision": {
-    "action": "search_web",
-    "query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
-  },
-  "built_query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
-}
-```
-
-### y/ (DBD Capture + Decryption)
-
-Generated files:
-- `y/dbd_result.json`
-- `y/dbd_result_decrypted.json`
-- `y/debug/dbd_page.html` (optional debug dump)
-
-Example (`y/dbd_result_decrypted.json`):
-
-```json
-{
-  "enc_key_found": true,
-  "enc_key_candidates": 1,
-  "profile": null,
-  "financial": null,
-  "financial_sections": {},
-  "others": [
-    {
-      "url": "https://datawarehouse.dbd.go.th/api/refresh",
-      "data": {
-        "idToken": "..."
-      }
-    }
-  ]
-}
-```
-
-### z/ (AI Summary)
-
-Generated files:
-- `z/z_compact_data.json`
-- `z/z_summary.md`
-
-Example (`z/z_compact_data.json`):
-
-```json
-{
-  "profile_snapshot": {
-    "name_th": null,
-    "name_en": null,
-    "juristic_id": null
-  },
-  "financial_deep_dive": {
-    "latest_financial": {},
-    "yearly_financials": [],
-    "submit_history": []
-  }
-}
-```
-
-### s_sdk/ (Settrade SDK)
-
-Generated files:
-- `s_sdk/settrade_company_data.json`
-- `s_sdk/settrade_company_data.md`
-
-Example (`s_sdk/settrade_company_data.json`):
-
-```json
-{
-  "source": "settrade_v2",
-  "symbol": "AOT",
-  "retrieved_at": "2026-03-26T08:28:49.247566Z",
-  "quote": {
-    "last": 54.25,
-    "change": -0.75,
-    "percentChange": -1.36,
-    "marketStatus": "Open2",
-    "pe": 41.79,
-    "pbv": 5.38
-  },
-  "candlestick": {
-    "lastSequence": 264558,
-    "time": [1770829200, 1770915600, 1771174800]
-  },
-  "snapshot": {
-    "last_price": 54.25,
-    "market_status": "Open2"
-  }
-}
-```
-
-### s_scape/ (Settrade Web Scraper)
-
-Generated files:
-- `s_scape/settrade_{SYMBOL}.json`
-- `s_scape/settrade_{SYMBOL}.md`
-
-Example (`s_scape/settrade_OSP.json`):
-
-```json
-{
-  "symbol": "OSP",
-  "scraped_at": "2026-03-26T15:29:37.969452",
-  "profile": {
-    "name": "บริษัท โอสถสภา จำกัด (มหาชน)",
-    "market": "SET",
-    "industry": "AGRO",
-    "sector": "FOOD"
-  },
-  "info": {
-    "last": 14.2,
-    "change": -0.4,
-    "percentChange": -2.739726,
-    "marketStatus": "Open2"
-  },
-  "shareholder": {
-    "totalShareholder": 33323,
-    "percentScriptless": 97.13
-  },
-  "historical": [
-    {
-      "date": "2026-03-25T00:00:00+07:00",
-      "close": 14.6
-    }
-  ],
-  "corporate_action": [
-    {
-      "caType": "XD",
-      "recordDate": "2026-05-08T00:00:00+07:00"
-    }
-  ]
-}
-```
+- x:
+  - [result_examples/x/siliconflow_search_query_built_result.json](result_examples/x/siliconflow_search_query_built_result.json)
+  - [result_examples/x/last_brave_search_result.json](result_examples/x/last_brave_search_result.json)
+  - [result_examples/x/final_result.txt](result_examples/x/final_result.txt)
+- y:
+  - [result_examples/y/dbd_result.json](result_examples/y/dbd_result.json)
+  - [result_examples/y/dbd_result_decrypted.json](result_examples/y/dbd_result_decrypted.json)
+- z:
+  - [result_examples/z/z_compact_data.json](result_examples/z/z_compact_data.json)
+  - [result_examples/z/z_summary.md](result_examples/z/z_summary.md)
+- s_sdk:
+  - [result_examples/s_sdk/settrade_company_data.json](result_examples/s_sdk/settrade_company_data.json)
+  - [result_examples/s_sdk/settrade_company_data.md](result_examples/s_sdk/settrade_company_data.md)
+- s_scape:
+  - [result_examples/s_scape/settrade_OSP.json](result_examples/s_scape/settrade_OSP.json)
+  - [result_examples/s_scape/settrade_OSP.md](result_examples/s_scape/settrade_OSP.md)
 
 ## Settrade Scraper Data (`s_scape/s_scrape.py`)
 
@@ -240,15 +137,6 @@ Fetches six public endpoints for any SET symbol (no authentication required):
 | Dividends and corporate actions | `/api/set/stock/{sym}/corporate-action` |
 
 > Financial statements (income statement, balance sheet, financial ratios) require Settrade login and are not available via the public API.
-
-## Dependencies
-
-Install required Python packages in your active Python environment:
-
-```powershell
-pip install requests playwright cryptography settrade-v2
-python -m playwright install chromium
-```
 
 ## Config Setup
 

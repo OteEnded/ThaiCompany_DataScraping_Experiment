@@ -1,0 +1,23 @@
+{
+  "profile_snapshot": {
+    "name_th": null,
+    "name_en": null,
+    "juristic_id": null,
+    "status": null,
+    "business": null,
+    "fiscal_year": null,
+    "revenue": null,
+    "net_profit": null,
+    "profit_growth_pct": null,
+    "total_assets": null,
+    "equity": null,
+    "debt_to_equity": null,
+    "latest_submit_year": null,
+    "latest_submit_date": null
+  },
+  "financial_deep_dive": {
+    "latest_financial": {},
+    "yearly_financials": [],
+    "submit_history": []
+  }
+}

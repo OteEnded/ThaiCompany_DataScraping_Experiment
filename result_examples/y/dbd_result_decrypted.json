@@ -1,0 +1,251 @@
+{
+  "enc_key_found": true,
+  "token_payload": {
+    "encKey": "yNGUxL01Q7cccyZFu6MRIO6OePrOujcUpM_Esd8gp8M",
+    "sub": "4178b551-3223-4a81-b804-9aa7f4c926f6",
+    "provider": "ANONYMOUS",
+    "auth": [
+      "ROLE_ANONYMOUS"
+    ],
+    "exp": 1774515286,
+    "type": "access",
+    "iat": 1774513486,
+    "anonId": "4178b551-3223-4a81-b804-9aa7f4c926f6"
+  },
+  "enc_key_candidates": 1,
+  "profile": null,
+  "financial": null,
+  "financial_sections": {},
+  "committees": [],
+  "sign_committees": [],
+  "mergers": [],
+  "others": [
+    {
+      "url": "https://datawarehouse.dbd.go.th/api/refresh",
+      "data": {
+        "idToken": "eyJhbGciOiJIUzUxMiJ9.eyJlbmNLZXkiOiJ5TkdVeEwwMVE3Y2NjeVpGdTZNUklPNk9lUHJPdWpjVXBNX0VzZDhncDhNIiwic3ViIjoiNDE3OGI1NTEtMzIyMy00YTgxLWI4MDQtOWFhN2Y0YzkyNmY2IiwicHJvdmlkZXIiOiJBTk9OWU1PVVMiLCJhdXRoIjpbIlJPTEVfQU5PTllNT1VTIl0sImV4cCI6MTc3NDUxNTI4NiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3NDUxMzQ4NiwiYW5vbklkIjoiNDE3OGI1NTEtMzIyMy00YTgxLWI4MDQtOWFhN2Y0YzkyNmY2In0.a0-i8XtVzDcpvtAfMPJzWJXkw7u883Lx0xYP4sAtJ5Eco29ZYtQr6MW0Or6npYZQb_VuoSlCYFm5Gdu1jF9TIg"
+      }
+    },
+    {
+      "url": "https://datawarehouse.dbd.go.th/api/v1/commons/params",
+      "data": [
+        {
+          "paraCode": "DAILY_DATA_DATE",
+          "paraValue": "25/03/2026",
+          "paraStatus": "A",
+          "rowNo": 1
+        },
+        {
+          "paraCode": "DAILY_FISCAL_YEAR",
+          "paraValue": "2567",
+          "paraStatus": "A",
+          "rowNo": 2
+        },
+        {
+          "paraCode": "MONTHLY_DATA_DATE",
+          "paraValue": "28/02/2026",
+          "paraStatus": "A",
+          "rowNo": 3
+        },
+        {
+          "paraCode": "MONTHLY_FISCAL_YEAR",
+          "paraValue": "2567",
+          "paraStatus": "A",
+          "rowNo": 4
+        },
+        {
+          "paraCode": "DAILY_DATA_MONTH",
+          "paraValue": "202603",
+          "paraStatus": "A",
+          "rowNo": 5
+        },
+        {
+          "paraCode": "MONTHLY_DATA_MONTH",
+          "paraValue": "202602",
+          "paraStatus": "A",
+          "rowNo": 6
+        },
+        {
+          "paraCode": "DBD_ADDR3",
+          "paraValue": "563 ถ.นนทบุรี ต.บางกระสอ อ.เมือง",
+          "paraStatus": "A",
+          "rowNo": 7
+        },
+        {
+          "paraCode": "DBD_ADDR1",
+          "paraValue": "กรมพัฒนาธุรกิจการค้า",
+          "paraStatus": "A",
+          "rowNo": 8
+        },
+        {
+          "paraCode": "DBD_ADDR2",
+          "paraValue": "กระทรวงพาณิชย์ (สนามบินน้ำ)",
+          "paraStatus": "A",
+          "rowNo": 9
+        },
+        {
+          "paraCode": "DBD_ADDR4",
+          "paraValue": "จ.นนทบุรี 11000",
+          "paraStatus": "A",
+          "rowNo": 10
+        },
+        {
+          "paraCode": "DBD_TEL_NO",
+          "paraValue": "02 547 4376",
+          "paraStatus": "A",
+          "rowNo": 11
+        },
+        {
+          "paraCode": "DBD_EMAIL",
+          "paraValue": "datawarehouse@dbd.go.th",
+          "paraStatus": "A",
+          "rowNo": 12
+        },
+        {
+          "paraCode": "DBD_FB_LABEL",
+          "paraValue": "DBD BIT",
+          "paraStatus": "A",
+          "rowNo": 13
+        },
+        {
+          "paraCode": "DBD_FB_LINK",
+          "paraValue": "https://www.facebook.com/DBDdataWarehouse",
+          "paraStatus": "A",
+          "rowNo": 14
+        },
+        {
+          "paraCode": "DAILY_DATA_DATE_START",
+          "paraValue": "01/01/2026",
+          "paraStatus": "A",
+          "rowNo": 15
+        },
+        {
+          "paraCode": "MONTHLY_DATA_DATE_START",
+          "paraValue": "01/01/2026",
+          "paraStatus": "A",
+          "rowNo": 16
+        },
+        {
+          "paraCode": "FORECAST_FYEAR_END",
+          "paraValue": "2562",
+          "paraStatus": "A",
+          "rowNo": 17
+        },
+        {
+          "paraCode": "FORECAST_FYEAR_START",
+          "paraValue": "2561",
+          "paraStatus": "A",
+          "rowNo": 18
+        },
+        {
+          "paraCode": "DBD_ADDR_EN",
+          "paraValue": "Department of Business Development Ministry of Commerce (Sanambin Num) 563 Nonthaburi Rd. Bangkrasor Muang, Nonthaburi 11000",
+          "paraStatus": "A",
+          "rowNo": 19
+        },
+        {
+          "paraCode": "ETL_PROCESS",
+          "paraValue": "OFF",
+          "paraStatus": "A",
+          "rowNo": 20
+        },
+        {
+          "paraCode": "DIPT_TRADEMARK",
+          "paraValue": "https://tm.ipthailand.go.th/v1/trademark/owner/",
+          "paraStatus": "A",
+          "rowNo": 21
+        },
+        {
+          "paraCode": "MAX_JP_AGE",
+          "paraValue": "3007",
+          "paraStatus": "A",
+          "rowNo": 22
+        },
+        {
+          "paraCode": "MAX_CAP_AMT",
+          "paraValue": "871646772055",
+          "paraStatus": "A",
+          "rowNo": 23
+        },
+        {
+          "paraCode": "MAX_TOTAL_INCOME",
+          "paraValue": "20045735810000",
+          "paraStatus": "A",
+          "rowNo": 24
+        },
+        {
+          "paraCode": "MAX_NET_PROFIT",
+          "paraValue": "367200000000",
+          "paraStatus": "A",
+          "rowNo": 25
+        },
+        {
+          "paraCode": "MAX_TOTAL_ASSET",
+          "paraValue": "16853446230000",
+          "paraStatus": "A",
+          "rowNo": 26
+        },
+        {
+          "paraCode": "MAX_TOTAL_EQUITY",
+          "paraValue": "4293871230000",
+          "paraStatus": "A",
+          "rowNo": 27
+        },
+        {
+          "paraCode": "MIN_JP_AGE",
+          "paraValue": "-574",
+          "paraStatus": "A",
+          "rowNo": 28
+        },
+        {
+          "paraCode": "MIN_CAP_AMT",
+          "paraValue": "0",
+          "paraStatus": "A",
+          "rowNo": 29
+        },
+        {
+          "paraCode": "MIN_TOTAL_INCOME",
+          "paraValue": "-98670412386",
+          "paraStatus": "A",
+          "rowNo": 30
+        },
+        {
+          "paraCode": "MIN_NET_PROFIT",
+          "paraValue": "-1206462000000",
+          "paraStatus": "A",
+          "rowNo": 31
+        },
+        {
+          "paraCode": "MIN_TOTAL_ASSET",
+          "paraValue": "-66738603.57",
+          "paraStatus": "A",
+          "rowNo": 32
+        },
+        {
+          "paraCode": "MIN_TOTAL_EQUITY",
+          "paraValue": "-318387332001.24",
+          "paraStatus": "A",
+          "rowNo": 33
+        },
+        {
+          "paraCode": "TODAY_DATA_DATE",
+          "paraValue": "25/03/2026",
+          "paraStatus": "A",
+          "rowNo": 34
+        },
+        {
+          "paraCode": "TOTAL_VISITORS",
+          "paraValue": "231354143",
+          "paraStatus": "A",
+          "rowNo": 35
+        },
+        {
+          "paraCode": "SEARCH_LIMIT_CNT",
+          "paraValue": "10",
+          "paraStatus": "A",
+          "rowNo": 36
+        }
+      ]
+    }
+  ]
+}
