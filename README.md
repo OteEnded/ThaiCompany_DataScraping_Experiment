@@ -92,11 +92,12 @@ Example (`x/dumps/siliconflow_search_query_built_result.json`):
 
 ```json
 {
-  "query": "บริษัท โอสถสภา จำกัด (มหาชน) OSP",
-  "generated_search_terms": [
-    "OSP company profile",
-    "OSP SET filing"
-  ]
+  "user_input": "บรษท โอสถสภา จำกด (มหาชน) OSP",
+  "decision": {
+    "action": "search_web",
+    "query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
+  },
+  "built_query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
 }
 ```
 
@@ -112,17 +113,18 @@ Example (`y/dbd_result_decrypted.json`):
 ```json
 {
   "enc_key_found": true,
-  "profile": {
-    "juristicId": "0107561000081",
-    "nameTh": "...",
-    "nameEn": "..."
-  },
-  "financial_sections": {
-    "balancesheet_year_1": {
-      "url": "...",
-      "data": "..."
+  "enc_key_candidates": 1,
+  "profile": null,
+  "financial": null,
+  "financial_sections": {},
+  "others": [
+    {
+      "url": "https://datawarehouse.dbd.go.th/api/refresh",
+      "data": {
+        "idToken": "..."
+      }
     }
-  }
+  ]
 }
 ```
 
@@ -137,12 +139,14 @@ Example (`z/z_compact_data.json`):
 ```json
 {
   "profile_snapshot": {
-    "name_th": "...",
-    "juristic_id": "..."
+    "name_th": null,
+    "name_en": null,
+    "juristic_id": null
   },
   "financial_deep_dive": {
     "latest_financial": {},
-    "yearly_financials": []
+    "yearly_financials": [],
+    "submit_history": []
   }
 }
 ```
@@ -157,11 +161,25 @@ Example (`s_sdk/settrade_company_data.json`):
 
 ```json
 {
-  "source": "settrade_sdk",
+  "source": "settrade_v2",
   "symbol": "AOT",
-  "quote": {},
-  "candlestick": {},
-  "snapshot": {}
+  "retrieved_at": "2026-03-26T08:28:49.247566Z",
+  "quote": {
+    "last": 54.25,
+    "change": -0.75,
+    "percentChange": -1.36,
+    "marketStatus": "Open2",
+    "pe": 41.79,
+    "pbv": 5.38
+  },
+  "candlestick": {
+    "lastSequence": 264558,
+    "time": [1770829200, 1770915600, 1771174800]
+  },
+  "snapshot": {
+    "last_price": 54.25,
+    "market_status": "Open2"
+  }
 }
 ```
 
@@ -176,12 +194,35 @@ Example (`s_scape/settrade_OSP.json`):
 ```json
 {
   "symbol": "OSP",
-  "profile": {},
-  "info": {},
-  "overview": {},
-  "shareholder": {},
-  "historical": [],
-  "corporate_action": []
+  "scraped_at": "2026-03-26T15:29:37.969452",
+  "profile": {
+    "name": "บริษัท โอสถสภา จำกัด (มหาชน)",
+    "market": "SET",
+    "industry": "AGRO",
+    "sector": "FOOD"
+  },
+  "info": {
+    "last": 14.2,
+    "change": -0.4,
+    "percentChange": -2.739726,
+    "marketStatus": "Open2"
+  },
+  "shareholder": {
+    "totalShareholder": 33323,
+    "percentScriptless": 97.13
+  },
+  "historical": [
+    {
+      "date": "2026-03-25T00:00:00+07:00",
+      "close": 14.6
+    }
+  ],
+  "corporate_action": [
+    {
+      "caType": "XD",
+      "recordDate": "2026-05-08T00:00:00+07:00"
+    }
+  ]
 }
 ```
 
