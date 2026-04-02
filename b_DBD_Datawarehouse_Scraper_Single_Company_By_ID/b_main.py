@@ -16,6 +16,18 @@ from playwright.sync_api import sync_playwright
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_STORAGE_STATE = BASE_DIR / "storage_state.json"
+DEFAULT_LOCAL_CONFIG_PATH = BASE_DIR / "b_local_config.json"
+
+
+def load_local_run_config(config_path: Path) -> dict:
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
 
 
 def parse_api_response_body(response):
@@ -636,31 +648,31 @@ def get_company_data(juristic_id: str, headless: bool = False, storage_state_pat
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Capture DBD company data with Playwright")
+    parser = argparse.ArgumentParser(description="Capture DBD company data via local JSON config")
     parser.add_argument(
-        "--juristic-id",
-        default="0107561000081",
-        help="Juristic ID to open on DBD DataWarehouse",
-    )
-    parser.add_argument(
-        "--headless",
-        action="store_true",
-        help="Run browser in headless mode",
-    )
-    parser.add_argument(
-        "--storage-state",
-        default=str(DEFAULT_STORAGE_STATE),
-        help="Path to Playwright storage state JSON for cookie/session reuse",
-    )
-    parser.add_argument(
-        "--no-storage-state",
-        action="store_true",
-        help="Disable loading/saving storage state for this run",
+        "--config",
+        default=str(DEFAULT_LOCAL_CONFIG_PATH),
+        help="Path to local run config JSON (default: b_local_config.json)",
     )
     args = parser.parse_args()
 
-    storage_state_path = None if args.no_storage_state else Path(args.storage_state)
-    data = get_company_data(args.juristic_id, headless=args.headless, storage_state_path=storage_state_path)
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = (BASE_DIR / config_path).resolve()
+    run_cfg = load_local_run_config(config_path)
+
+    juristic_id = str(run_cfg.get("juristic_id", "0107561000081")).strip() or "0107561000081"
+    headless = bool(run_cfg.get("headless", False))
+    no_storage_state = bool(run_cfg.get("no_storage_state", False))
+    storage_state_value = str(run_cfg.get("storage_state", str(DEFAULT_STORAGE_STATE))).strip()
+
+    storage_state_path = None
+    if not no_storage_state:
+        storage_state_path = Path(storage_state_value)
+        if not storage_state_path.is_absolute():
+            storage_state_path = (BASE_DIR / storage_state_path).resolve()
+
+    data = get_company_data(juristic_id, headless=headless, storage_state_path=storage_state_path)
     token_candidates = collect_tokens_from_results(data)
     nuxt_token = data.get("debug", {}).get("nuxt_token")
     if isinstance(nuxt_token, str) and nuxt_token.count(".") >= 2:
@@ -704,7 +716,7 @@ def main():
 
     if data.get("debug", {}).get("storage_state_used"):
         print("Storage state loaded:", data["debug"]["storage_state_used"])
-    elif not args.no_storage_state:
+    elif not no_storage_state:
         print("Storage state file not found yet; it will be created after this run")
 
     if decrypted.get("enc_key_found"):

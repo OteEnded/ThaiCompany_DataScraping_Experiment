@@ -19,6 +19,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_LOCAL_CONFIG_PATH = BASE_DIR / "e_local_config.json"
 
 # Confirmed working REST endpoints (probed 2025-03)
 ENDPOINTS = {
@@ -98,6 +99,17 @@ def _md_value(v) -> str:
     if v is None:
         return ""
     return str(v)
+
+
+def load_local_run_config(config_path: Path) -> dict:
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
 
 
 def save(data: dict) -> None:
@@ -202,14 +214,25 @@ def save(data: dict) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Settrade stock data scraper")
-    parser.add_argument("--symbol", "-s", default="OSP", help="SET symbol, e.g. OSP, AOT")
-    parser.add_argument("--headless", action="store_true", help="Run browser headlessly (no window)")
+    parser = argparse.ArgumentParser(description="Settrade stock data scraper via local JSON config")
+    parser.add_argument(
+        "--config",
+        default=str(DEFAULT_LOCAL_CONFIG_PATH),
+        help="Path to local run config JSON (default: e_local_config.json)",
+    )
     args = parser.parse_args()
 
-    data = scrape(args.symbol, headless=args.headless)
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = (BASE_DIR / config_path).resolve()
+    run_cfg = load_local_run_config(config_path)
+
+    symbol = str(run_cfg.get("symbol", "OSP")).strip() or "OSP"
+    headless = bool(run_cfg.get("headless", False))
+
+    data = scrape(symbol, headless=headless)
     save(data)
-    print(f"\nDone — {args.symbol}")
+    print(f"\nDone - {symbol}")
 
 
 if __name__ == "__main__":

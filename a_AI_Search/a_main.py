@@ -25,6 +25,18 @@ CONFIG = load_config()
 BRAVE_API_KEY = CONFIG.get("BRAVE_API_KEY", "")
 SILICONFLOW_API_KEY = CONFIG.get("SILICONFLOW_API_KEY", "")
 DUMPS_DIR = Path(__file__).with_name("dumps")
+DEFAULT_LOCAL_CONFIG_PATH = Path(__file__).with_name("a_local_config.json")
+
+
+def load_local_run_config(config_path: Path) -> dict[str, Any]:
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
 
 
 def dump_json_file(filename: str, payload: Any) -> None:
@@ -159,22 +171,34 @@ If unsure, say you are unsure.
 
 
 def main() -> None:
-    default_query = "หาข้อมูล บริษัทที่ tax id 0105551234567"
-    parser = argparse.ArgumentParser(description="Simple web+LLM agent")
+    parser = argparse.ArgumentParser(description="Simple web+LLM agent via local JSON config")
     parser.add_argument(
-        "--query",
-        default=None,
-        help="Question to ask the agent. If omitted, you will be prompted.",
+        "--config",
+        default=str(DEFAULT_LOCAL_CONFIG_PATH),
+        help="Path to local run config JSON (default: a_local_config.json)",
     )
     args = parser.parse_args()
 
-    if args.query is None:
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = (Path(__file__).resolve().parent / config_path).resolve()
+    run_cfg = load_local_run_config(config_path)
+
+    default_query = str(
+        run_cfg.get("default_query", "หาข้อมูล บริษัทที่ tax id 0105551234567")
+    ).strip() or "หาข้อมูล บริษัทที่ tax id 0105551234567"
+    query_from_config = run_cfg.get("query")
+    prompt_if_missing = bool(run_cfg.get("prompt_if_query_missing", True))
+
+    if isinstance(query_from_config, str) and query_from_config.strip():
+        user_query = query_from_config.strip()
+    elif prompt_if_missing:
         try:
             user_query = input("Enter prompt (leave blank for default): ").strip()
         except EOFError:
             user_query = ""
     else:
-        user_query = args.query.strip()
+        user_query = ""
 
     final_query = user_query or default_query
     print(agent(final_query))

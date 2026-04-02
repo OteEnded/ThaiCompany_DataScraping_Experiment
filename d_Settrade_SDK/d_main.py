@@ -5,6 +5,10 @@ from typing import Any
 import argparse
 
 
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_LOCAL_CONFIG_PATH = BASE_DIR / "d_local_config.json"
+
+
 def load_config() -> dict[str, Any]:
     config_path = Path(__file__).resolve().parent.parent / "config.json"
     with config_path.open("r", encoding="utf-8") as f:
@@ -12,6 +16,17 @@ def load_config() -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("config.json must contain a JSON object")
     return data
+
+
+def load_local_run_config(config_path: Path) -> dict[str, Any]:
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
 
 
 def validate_settrade_config(cfg: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
@@ -147,17 +162,29 @@ def main() -> None:
         print("Install with: pip install settrade-v2")
         return
 
-    parser = argparse.ArgumentParser(description="Settrade SDK retrieval helper")
+    parser = argparse.ArgumentParser(description="Settrade SDK retrieval helper via local JSON config")
     parser.add_argument(
-        "--mode",
-        choices=["account-info", "company-data", "both"],
-        default="company-data",
-        help="Choose data to retrieve",
+        "--config",
+        default=str(DEFAULT_LOCAL_CONFIG_PATH),
+        help="Path to local run config JSON (default: d_local_config.json)",
     )
-    parser.add_argument("--symbol", default=None, help="SET symbol for company/market data")
-    parser.add_argument("--interval", default="1d", help="Candlestick interval (example: 1d, 5m)")
-    parser.add_argument("--limit", type=int, default=30, help="Candlestick points to fetch")
     args = parser.parse_args()
+
+    run_config_path = Path(args.config)
+    if not run_config_path.is_absolute():
+        run_config_path = (BASE_DIR / run_config_path).resolve()
+    run_cfg = load_local_run_config(run_config_path)
+
+    mode = str(run_cfg.get("mode", "company-data")).strip()
+    if mode not in {"account-info", "company-data", "both"}:
+        mode = "company-data"
+
+    symbol_from_config = run_cfg.get("symbol")
+    interval = str(run_cfg.get("interval", "1d")).strip() or "1d"
+    try:
+        limit = int(run_cfg.get("limit", 30))
+    except (TypeError, ValueError):
+        limit = 30
 
     cfg = load_config()
     settrade_cfg, missing = validate_settrade_config(cfg)
@@ -169,16 +196,19 @@ def main() -> None:
         return
 
     investor = build_investor(settrade_cfg)
-    symbol = args.symbol or str(settrade_cfg.get("default_symbol", "AOT"))
+    if isinstance(symbol_from_config, str) and symbol_from_config.strip():
+        symbol = symbol_from_config.strip()
+    else:
+        symbol = str(settrade_cfg.get("default_symbol", "AOT"))
 
     try:
-        if args.mode in ("account-info", "both"):
+        if mode in ("account-info", "both"):
             account_info = retrieve_account_info(investor, settrade_cfg)
             print("Account info:")
             print(json.dumps(account_info, ensure_ascii=False, indent=2))
 
-        if args.mode in ("company-data", "both"):
-            company_data = retrieve_company_market_data(investor, symbol, args.interval, args.limit)
+        if mode in ("company-data", "both"):
+            company_data = retrieve_company_market_data(investor, symbol, interval, limit)
             print("Company market data:")
             print(json.dumps(company_data.get("snapshot", {}), ensure_ascii=False, indent=2))
             save_company_data_files(company_data)

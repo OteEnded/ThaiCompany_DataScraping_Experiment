@@ -1,0 +1,5 @@
+{
+  "query": null,
+  "prompt_if_query_missing": true,
+  "default_query": "หาข้อมูล บริษัทที่ tax id 0105551234567"
+}
