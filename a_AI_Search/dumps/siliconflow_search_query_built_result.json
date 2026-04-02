@@ -1,0 +1,9 @@
+{
+  "user_input": "บรษท โอสถสภา จำกด (มหาชน) OSP",
+  "decision_raw": "\n\n{\n  \"action\": \"search_web\",\n  \"query\": \"บรษท โอสถสภา จำกด (มหาชน) OSP\"\n}",
+  "decision": {
+    "action": "search_web",
+    "query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
+  },
+  "built_query": "บรษท โอสถสภา จำกด (มหาชน) OSP"
+}

@@ -41,9 +41,9 @@ with sync_playwright() as p:
             print(f"         -> {body_preview}")
 
     # Save
-    with open("s_scape/probe_fiveyears.json", "w", encoding="utf-8") as f:
+    with open("e_Settrade_Scraper/probe_fiveyears.json", "w", encoding="utf-8") as f:
         json.dump(apis, f, ensure_ascii=False, indent=2)
-    print("\nSaved: s_scape/probe_fiveyears.json")
+    print("\nSaved: e_Settrade_Scraper/probe_fiveyears.json")
 
-    page.screenshot(path="s_scape/probe_fiveyears.png")
+    page.screenshot(path="e_Settrade_Scraper/probe_fiveyears.png")
     browser.close()

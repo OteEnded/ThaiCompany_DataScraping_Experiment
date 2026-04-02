@@ -95,8 +95,8 @@ with sync_playwright() as p:
         "probe": results,
         "working": working,
     }
-    with open("s_scape/probe_financial.json", "w", encoding="utf-8") as f:
+    with open("e_Settrade_Scraper/probe_financial.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
-    print("\nSaved: s_scape/probe_financial.json")
-    page.screenshot(path="s_scape/probe_financial.png")
+    print("\nSaved: e_Settrade_Scraper/probe_financial.json")
+    page.screenshot(path="e_Settrade_Scraper/probe_financial.png")
     browser.close()

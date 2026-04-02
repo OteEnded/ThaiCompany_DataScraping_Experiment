@@ -135,11 +135,11 @@ with sync_playwright() as p:
         "direct_api_probe": probe_results,
         "working_endpoints": working,
     }
-    with open("s_scape/probe_api_dump.json", "w", encoding="utf-8") as f:
+    with open("e_Settrade_Scraper/probe_api_dump.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
-    print("\nSaved: s_scape/probe_api_dump.json")
+    print("\nSaved: e_Settrade_Scraper/probe_api_dump.json")
 
-    page.screenshot(path="s_scape/probe_screenshot.png")
-    print("Screenshot: s_scape/probe_screenshot.png")
+    page.screenshot(path="e_Settrade_Scraper/probe_screenshot.png")
+    print("Screenshot: e_Settrade_Scraper/probe_screenshot.png")
 
     browser.close()

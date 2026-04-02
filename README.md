@@ -23,11 +23,11 @@ Then edit `config.json` with your own keys and credentials.
 
 This workspace is organized into five process folders:
 
-- `x/` — AI-powered web search (Brave + SiliconFlow LLM)
-- `y/` — DBD DataWarehouse scraper with HKDF/AES-GCM decryption
-- `z/` — AI summary generator from `y` outputs
-- `s_sdk/` — Settrade SDK wrapper (market data, account info via settrade-v2)
-- `s_scape/` — Settrade web scraper (company profile, shareholders, trading history via Playwright)
+- `a_AI_Search/` — AI-powered web search (Brave + SiliconFlow LLM)
+- `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/` — DBD DataWarehouse scraper with HKDF/AES-GCM decryption
+- `c_DBD_Company_AI_Summary/` — AI-powered company + financial summary from `b` outputs
+- `d_Settrade_SDK/` — Settrade SDK wrapper (market data, account info via settrade-v2)
+- `e_Settrade_Scraper/` — Settrade web scraper (company profile, shareholders, trading history via Playwright)
 
 Root-level shared files:
 
@@ -41,92 +41,92 @@ AI_Search/
   config.json
   README.md
   result_examples/
-    x/
-    y/
-    z/
-    s_sdk/
-    s_scape/
-  x/
-    x.py
+    a_AI_Search/
+    b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/
+    c_DBD_Company_AI_Summary/
+    d_Settrade_SDK/
+    e_Settrade_Scraper/
+  a_AI_Search/
+    a_main.py
     dumps/
       final_result.txt
       last_brave_search_result.json
       siliconflow_search_query_built_result.json
-  y/
-    y.py
+  b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/
+    b_main.py
     dbd_result.json
     dbd_result_decrypted.json
-    debug/
+    dumps/
       dbd_page.html
-  z/
-    z.py
+  c_DBD_Company_AI_Summary/
+    c_main.py
     z_compact_data.json
     z_summary.md
-  s_sdk/
-    s.py
+  d_Settrade_SDK/
+    d_main.py
     settrade_company_data.json
     settrade_company_data.md
-  s_scape/
-    s_scrape.py
+  e_Settrade_Scraper/
+    e_main.py
     settrade_{SYMBOL}.json
     settrade_{SYMBOL}.md
 ```
 
 ## End-to-End Flow
 
-1. **x** — Search + LLM experimentation (Brave Search API + SiliconFlow).
-2. **y** — Scrape and decrypt DBD company registration data by juristic ID.
-3. **z** — Generate a human-readable markdown summary from y results.
-4. **s_sdk** — Query Settrade market data and brokerage account via official SDK.
-5. **s_scape** — Scrape public Settrade data (no login required) for any SET symbol.
+1. **a** — Search + LLM experimentation (Brave Search API + SiliconFlow).
+2. **b** — Scrape and decrypt DBD company registration data by juristic ID.
+3. **c** — Generate a human-readable markdown summary from b results.
+4. **d** — Query Settrade market data and brokerage account via official SDK.
+5. **e** — Scrape public Settrade data (no login required) for any SET symbol.
 
 ## Run Commands
 
 From workspace root:
 
 ```powershell
-# Search / LLM
-python x/x.py
+# a — Search / LLM
+python a_AI_Search/a_main.py
 
-# DBD scraper (company registration data)
-python y/y.py --juristic-id 70107561000081
+# b — DBD scraper (recommended, non-headless + persistent session state)
+python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081
 
-# DBD scraper (recommended, non-headless + persistent session state)
-python y/y.py --juristic-id 0107561000081
+# b — DBD scraper headless
+python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081 --headless
 
-# AI summary from DBD output
-python z/z.py
+# c — AI summary from DBD output (run b first)
+python c_DBD_Company_AI_Summary/c_main.py
 
-# Settrade SDK (market data + account)
-python s_sdk/s.py
+# d — Settrade SDK (market data + account)
+python d_Settrade_SDK/d_main.py
 
-# Settrade web scraper — outputs settrade_{SYMBOL}.json + .md
-python s_scape/s_scrape.py --symbol OSP --headless
-python s_scape/s_scrape.py --symbol AOT --headless
+# e — Settrade web scraper — outputs settrade_{SYMBOL}.json + .md
+python e_Settrade_Scraper/e_main.py --symbol OSP --headless
+python e_Settrade_Scraper/e_main.py --symbol AOT --headless
 ```
 
 ## Result Examples (From Latest Run)
 
 To keep this README short, full examples are stored in `result_examples/`:
 
-- x:
-  - [result_examples/x/siliconflow_search_query_built_result.json](result_examples/x/siliconflow_search_query_built_result.json)
-  - [result_examples/x/last_brave_search_result.json](result_examples/x/last_brave_search_result.json)
-  - [result_examples/x/final_result.txt](result_examples/x/final_result.txt)
-- y:
-  - [result_examples/y/dbd_result.json](result_examples/y/dbd_result.json)
-  - [result_examples/y/dbd_result_decrypted.json](result_examples/y/dbd_result_decrypted.json)
-- z:
-  - [result_examples/z/z_compact_data.json](result_examples/z/z_compact_data.json)
-  - [result_examples/z/z_summary.md](result_examples/z/z_summary.md)
-- s_sdk:
-  - [result_examples/s_sdk/settrade_company_data.json](result_examples/s_sdk/settrade_company_data.json)
-  - [result_examples/s_sdk/settrade_company_data.md](result_examples/s_sdk/settrade_company_data.md)
-- s_scape:
-  - [result_examples/s_scape/settrade_OSP.json](result_examples/s_scape/settrade_OSP.json)
-  - [result_examples/s_scape/settrade_OSP.md](result_examples/s_scape/settrade_OSP.md)
+- a (AI_Search):
+  - [result_examples/a_AI_Search/siliconflow_search_query_built_result.json](result_examples/a_AI_Search/siliconflow_search_query_built_result.json)
+  - [result_examples/a_AI_Search/last_brave_search_result.json](result_examples/a_AI_Search/last_brave_search_result.json)
+  - [result_examples/a_AI_Search/final_result.txt](result_examples/a_AI_Search/final_result.txt)
+- b (DBD Scraper):
+  - [result_examples/b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result.json](result_examples/b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result.json)
+  - [result_examples/b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result_decrypted.json](result_examples/b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result_decrypted.json)
+- c (Financial Summary):
+  - [result_examples/c_DBD_Company_AI_Summary/z_compact_data.json](result_examples/c_DBD_Company_AI_Summary/z_compact_data.json)
+  - [result_examples/c_DBD_Company_AI_Summary/z_summary.md](result_examples/c_DBD_Company_AI_Summary/z_summary.md)
+- d (Settrade SDK):
+  - [result_examples/d_Settrade_SDK/settrade_company_data.json](result_examples/d_Settrade_SDK/settrade_company_data.json)
+  - [result_examples/d_Settrade_SDK/settrade_company_data.md](result_examples/d_Settrade_SDK/settrade_company_data.md)
+- e (Settrade Scraper):
+  - [result_examples/e_Settrade_Scraper/settrade_OSP.json](result_examples/e_Settrade_Scraper/settrade_OSP.json)
+  - [result_examples/e_Settrade_Scraper/settrade_OSP.md](result_examples/e_Settrade_Scraper/settrade_OSP.md)
 
-Notes for y examples:
+Notes for b examples:
 - `dbd_result.json` may contain `_raw_text` payloads when DBD returns Incapsula challenge HTML instead of API JSON.
 - `dbd_result_decrypted.json` can show `enc_key_found=false` (or empty profile/financial) when no valid JWT/encKey is available during that run.
 - Check `debug.blocked_urls` in `dbd_result.json` to confirm anti-bot blocking.

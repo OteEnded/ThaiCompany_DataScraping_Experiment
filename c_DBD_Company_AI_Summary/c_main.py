@@ -284,7 +284,7 @@ Style:
 
 
 def main() -> None:
-    raw_data = load_data(str(ROOT_DIR / "y" / "dbd_result_decrypted.json"))
+    raw_data = load_data(str(ROOT_DIR / "b_DBD_Datawarehouse_Scraper_Single_Company_By_ID" / "dbd_result_decrypted.json"))
     compact = extract_summary_fields(raw_data)
 
     print("Compact Data:")

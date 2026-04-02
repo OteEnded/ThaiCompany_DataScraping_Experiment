@@ -33,7 +33,7 @@ x/result.md
 # Runtime/generated outputs - y
 y/dbd_result.json
 y/dbd_result_decrypted.json
-y/storage_state.json
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/storage_state.json
 y/dumps/
 y/debug/
 y/*.har

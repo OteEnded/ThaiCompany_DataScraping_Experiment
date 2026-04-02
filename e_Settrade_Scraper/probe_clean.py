@@ -101,8 +101,8 @@ with sync_playwright() as p:
     has_numbers = any(n in html for n in ["รายได้", "กำไร", "revenue", "profit"])
     print(f"Financial keywords in HTML: {has_numbers}")
 
-    with open("s_scape/probe_clean.json", "w", encoding="utf-8") as f:
+    with open("e_Settrade_Scraper/probe_clean.json", "w", encoding="utf-8") as f:
         json.dump({"log": log}, f, ensure_ascii=False, indent=2)
-    print("Saved: s_scape/probe_clean.json")
-    page.screenshot(path="s_scape/probe_clean.png")
+    print("Saved: e_Settrade_Scraper/probe_clean.json")
+    page.screenshot(path="e_Settrade_Scraper/probe_clean.png")
     browser.close()
