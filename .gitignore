@@ -52,3 +52,12 @@ e_Settrade_Scraper/settrade_*.md
 e_Settrade_Scraper/settrade_*.html
 e_Settrade_Scraper/probe_*.json
 e_Settrade_Scraper/probe_*.png
+
+# Runtime/generated outputs - f
+f_DBD_Company_List_Scraper_WIth_Filter/f_search_result.json
+f_DBD_Company_List_Scraper_WIth_Filter/storage_state.json
+f_DBD_Company_List_Scraper_WIth_Filter/result_packed.csv
+f_DBD_Company_List_Scraper_WIth_Filter/chrome_profile/
+f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.json
+f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.html
+f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.png

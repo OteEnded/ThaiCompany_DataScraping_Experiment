@@ -21,13 +21,14 @@ Copy-Item config.example.json config.json
 
 Then edit `config.json` with your own keys and credentials.
 
-This workspace is organized into five process folders:
+This workspace is organized into six process folders:
 
 - `a_AI_Search/` — AI-powered web search (Brave + SiliconFlow LLM)
 - `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/` — DBD DataWarehouse scraper with HKDF/AES-GCM decryption
 - `c_DBD_Company_AI_Summary/` — AI-powered company + financial summary from `b` outputs
 - `d_Settrade_SDK/` — Settrade SDK wrapper (market data, account info via settrade-v2)
 - `e_Settrade_Scraper/` — Settrade web scraper (company profile, shareholders, trading history via Playwright)
+- `f_DBD_Company_List_Scraper_WIth_Filter/` — DBD company-list scraper with advanced filters (UI + API hybrid)
 
 Root-level shared files:
 
@@ -46,6 +47,7 @@ AI_Search/
     c_DBD_Company_AI_Summary/
     d_Settrade_SDK/
     e_Settrade_Scraper/
+    f_DBD_Company_List_Scraper_WIth_Filter/
   a_AI_Search/
     a_main.py
     dumps/
@@ -70,6 +72,13 @@ AI_Search/
     e_main.py
     settrade_{SYMBOL}.json
     settrade_{SYMBOL}.md
+  f_DBD_Company_List_Scraper_WIth_Filter/
+    f_main.py
+    f_local_config.json
+    f_local_config_option.md
+    f_search_result.json
+    result_packed.csv
+    dumps/
 ```
 
 ## End-to-End Flow
@@ -79,6 +88,7 @@ AI_Search/
 3. **c** — Generate a human-readable markdown summary from b results.
 4. **d** — Query Settrade market data and brokerage account via official SDK.
 5. **e** — Scrape public Settrade data (no login required) for any SET symbol.
+6. **f** — Scrape DBD company list results with advanced filters and API-assisted pagination.
 
 ## Run Commands
 
@@ -103,7 +113,15 @@ python d_Settrade_SDK/d_main.py
 # e — Settrade web scraper — outputs settrade_{SYMBOL}.json + .md
 python e_Settrade_Scraper/e_main.py --symbol OSP --headless
 python e_Settrade_Scraper/e_main.py --symbol AOT --headless
+
+# f — DBD company-list scraper (config-driven)
+python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py
+python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.json
 ```
+
+Process `f` reference docs:
+- `f_DBD_Company_List_Scraper_WIth_Filter/README.md`
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md`
 
 ## Result Examples (From Latest Run)
 
@@ -125,6 +143,9 @@ To keep this README short, full examples are stored in `result_examples/`:
 - e (Settrade Scraper):
   - [result_examples/e_Settrade_Scraper/settrade_OSP.json](result_examples/e_Settrade_Scraper/settrade_OSP.json)
   - [result_examples/e_Settrade_Scraper/settrade_OSP.md](result_examples/e_Settrade_Scraper/settrade_OSP.md)
+- f (DBD Company List + Filter):
+  - [result_examples/f_DBD_Company_List_Scraper_WIth_Filter/f_search_result.json](result_examples/f_DBD_Company_List_Scraper_WIth_Filter/f_search_result.json)
+  - [result_examples/f_DBD_Company_List_Scraper_WIth_Filter/result_packed.csv](result_examples/f_DBD_Company_List_Scraper_WIth_Filter/result_packed.csv)
 
 Notes for b examples:
 - `dbd_result.json` may contain `_raw_text` payloads when DBD returns Incapsula challenge HTML instead of API JSON.
@@ -133,7 +154,7 @@ Notes for b examples:
 - `debug.status` in `dbd_result.json` reports one of `ok`, `partial`, or `blocked`.
 - `source_status` in `dbd_result_decrypted.json` mirrors the upstream run status for quick downstream checks.
 
-## Settrade Scraper Data (`s_scape/s_scrape.py`)
+## Settrade Scraper Data (`e_Settrade_Scraper/e_main.py`)
 
 Fetches six public endpoints for any SET symbol (no authentication required):
 
@@ -164,7 +185,7 @@ Copy-Item config.example.json config.json
 - `SETTRADE.broker_id`
 - `SETTRADE.app_code`
 - `SETTRADE.username`
-- account numbers and `pin` if you will run `s_sdk/s.py`
+- account numbers and `pin` if you will run `d_Settrade_SDK/d_main.py`
 
 3. Keep `config.json` local only (it is gitignored).
 
@@ -191,34 +212,35 @@ Minimal structure:
 
 ## Notes
 
-- `z/z.py` reads from `y/dbd_result_decrypted.json` and writes to `z/z_summary.md`.
-- `x/x.py` writes outputs under `x/dumps/` (not `x/result.md`).
-- `y/y.py` uses homepage search-flow first (same as manual tax-id search) and then falls back to direct profile URL.
-- `y/y.py` can return empty profile/financial payloads when DBD anti-bot (Incapsula) blocks API responses.
-- For best chance to get valid y results, run non-headless and let the page finish rendering:
+- `c_DBD_Company_AI_Summary/c_main.py` reads from `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result_decrypted.json` and writes summary outputs in `c_DBD_Company_AI_Summary/`.
+- `a_AI_Search/a_main.py` writes outputs under `a_AI_Search/dumps/`.
+- `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` uses homepage search-flow first (same as manual tax-id search) and then falls back to direct profile URL.
+- `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` can return empty profile/financial payloads when DBD anti-bot (Incapsula) blocks API responses.
+- For best chance to get valid `b` results, run non-headless and let the page finish rendering:
 
 ```powershell
-python y/y.py --juristic-id 0107561000081
+python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081
 ```
 
-- `y/y.py` now reuses browser session cookies in `y/storage_state.json` across runs to improve reliability after a successful/challenge-passed session.
+- `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` reuses browser session cookies in `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/storage_state.json` across runs to improve reliability after a successful/challenge-passed session.
 - To disable this behavior for a clean one-off run:
 
 ```powershell
-python y/y.py --juristic-id 0107561000081 --no-storage-state
+python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081 --no-storage-state
 ```
 
-- When blocked, details are logged in `y/dbd_result.json` under `debug.blocked_urls`.
-- `s_scape/s_scrape.py` launches a headless Chromium browser to obtain a live session, then calls Settrade's REST APIs via in-page `fetch()` — direct `requests` calls get 403.
+- When blocked, details are logged in `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result.json` under `debug.blocked_urls`.
+- `e_Settrade_Scraper/e_main.py` launches a headless Chromium browser to obtain a live session, then calls Settrade REST APIs via in-page `fetch()` (direct plain `requests` calls can get 403).
 - Keep `config.json` at root so all processes can share API keys and credentials.
 
 ## What We Have Done So Far
 
-- Built and verified `x/x.py` for Brave Search + SiliconFlow LLM flow.
-- Built and verified `y/y.py` for DBD capture + decryption pipeline, with anti-bot caveat documented.
-- Built and verified `z/z.py` summary generation from decrypted DBD output.
-- Added `s_sdk/s.py` integration with Settrade SDK for quote/candlestick and account-related access.
-- Built `s_scape/s_scrape.py` to fetch public Settrade data (`profile`, `info`, `overview`, `shareholder`, `historical-trading`, `corporate-action`).
+- Built and verified `a_AI_Search/a_main.py` for Brave Search + SiliconFlow LLM flow.
+- Built and verified `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` for DBD capture + decryption pipeline, with anti-bot caveat documented.
+- Built and verified `c_DBD_Company_AI_Summary/c_main.py` summary generation from decrypted DBD output.
+- Added `d_Settrade_SDK/d_main.py` integration with Settrade SDK for quote/candlestick and account-related access.
+- Built `e_Settrade_Scraper/e_main.py` to fetch public Settrade data (`profile`, `info`, `overview`, `shareholder`, `historical-trading`, `corporate-action`).
+- Added and validated `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` for DBD list extraction with advanced filters and API replay pagination.
 - Added repository hygiene files: `.gitignore`, `config.example.json`, and updated documentation.
 
 ## Reference Links
