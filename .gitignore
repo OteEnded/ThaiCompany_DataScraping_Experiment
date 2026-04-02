@@ -25,30 +25,30 @@ NotOte-*.txt
 .DS_Store
 Thumbs.db
 
-# Runtime/generated outputs - x
-x/dumps/*.json
-x/dumps/*.txt
-x/result.md
+# Runtime/generated outputs - a
+a_AI_Search/dumps/*.json
+a_AI_Search/dumps/*.txt
+a_AI_Search/result.md
 
-# Runtime/generated outputs - y
-y/dbd_result.json
-y/dbd_result_decrypted.json
+# Runtime/generated outputs - b
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result.json
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result_decrypted.json
 b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/storage_state.json
-y/dumps/
-y/debug/
-y/*.har
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dumps/
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/debug/
+b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/*.har
 
-# Runtime/generated outputs - z
-z/z_compact_data.json
-z/z_summary.md
+# Runtime/generated outputs - c
+c_DBD_Company_AI_Summary/z_compact_data.json
+c_DBD_Company_AI_Summary/z_summary.md
 
-# Runtime/generated outputs - s_sdk
-s_sdk/settrade_company_data.json
-s_sdk/settrade_company_data.md
+# Runtime/generated outputs - d
+d_Settrade_SDK/settrade_company_data.json
+d_Settrade_SDK/settrade_company_data.md
 
-# Runtime/generated outputs - s_scape
-s_scape/settrade_*.json
-s_scape/settrade_*.md
-s_scape/settrade_*.html
-s_scape/probe_*.json
-s_scape/probe_*.png
+# Runtime/generated outputs - e
+e_Settrade_Scraper/settrade_*.json
+e_Settrade_Scraper/settrade_*.md
+e_Settrade_Scraper/settrade_*.html
+e_Settrade_Scraper/probe_*.json
+e_Settrade_Scraper/probe_*.png

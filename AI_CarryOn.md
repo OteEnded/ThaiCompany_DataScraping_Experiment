@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-04-02 (rename refactor committed). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-04-02 (local context split by process). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -9,6 +9,7 @@ This file is a **living document**. It is the single source of truth for project
 
 **Rules for every AI agent working on this project:**
 - **Read this file first** before doing any work, every session.
+- For process-specific details, immediately read the corresponding `<<id>>_AI_Local_Context.md` in that process folder.
 - **Update this file immediately** whenever:
   - A module or file is modified
   - A bug is fixed or a new issue is found
@@ -113,217 +114,40 @@ Python 3.11.9 confirmed working (`C:/Users/OteServerI/AppData/Local/Programs/Pyt
 
 ## 5. Module Details
 
-### 5.1 `a_AI_Search/a_main.py` — Web Search Agent
+High-level summary only. Detailed process documentation now lives inside each process folder.
 
-**What it does:** Takes a user query, uses SiliconFlow LLM to decide whether to search the web (via Brave Search API), then answers with LLM.
+### 5.1 a — AI Search
+- Folder: `a_AI_Search/`
+- Main script: `a_main.py`
+- Purpose: LLM-driven web search orchestration (Brave + SiliconFlow)
+- Local details: `a_AI_Search/a_AI_Local_Context.md`
 
-**Run:**
-```powershell
-python a_AI_Search/a_main.py
-python a_AI_Search/a_main.py --query "หา บริษัท tax id 0105551234567"
-```
+### 5.2 b — DBD Datawarehouse Scraper (Single Company by ID)
+- Folder: `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/`
+- Main script: `b_main.py`
+- Purpose: capture + decrypt DBD company data by juristic ID
+- Local details: `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_AI_Local_Context.md`
 
-**Outputs (in `a_AI_Search/dumps/`):**
-- `siliconflow_search_query_built_result.json` — LLM's search decision + built query
-- `last_brave_search_result.json` — raw Brave Search results
-- `final_result.txt` — LLM's final answer
+### 5.3 c — DBD Company AI Summary
+- Folder: `c_DBD_Company_AI_Summary/`
+- Main script: `c_main.py`
+- Purpose: summarize process `b` output into compact JSON + markdown analysis
+- Local details: `c_DBD_Company_AI_Summary/c_AI_Local_Context.md`
 
-**Key internals:**
-- `web_search(query, count=5)` → calls `api.search.brave.com/res/v1/web/search`
-- `ask_llm(prompt)` → calls SiliconFlow `Qwen/QwQ-32B`
-- `agent(user_input)` → orchestrates decide→search→answer loop
-- No auth required beyond API keys in `config.json`
+### 5.4 d — Settrade SDK
+- Folder: `d_Settrade_SDK/`
+- Main script: `d_main.py`
+- Purpose: pull market + account data via `settrade-v2`
+- Local details: `d_Settrade_SDK/d_AI_Local_Context.md`
 
----
+### 5.5 e — Settrade Scraper
+- Folder: `e_Settrade_Scraper/`
+- Main script: `e_main.py`
+- Purpose: scrape public Settrade company snapshot endpoints via Playwright
+- Local details: `e_Settrade_Scraper/e_AI_Local_Context.md`
 
-### 5.2 `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` — DBD DataWarehouse Scraper ⚠️ Most Complex Module
-
-**What it does:** Uses Playwright (Chromium) to navigate DBD DataWarehouse (`datawarehouse.dbd.go.th`), intercept encrypted API responses, decrypt them via HKDF/AES-GCM, and save raw + decrypted results.
-
-**Run:**
-```powershell
-# Default (non-headless, with storage state — recommended)
-python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081
-
-# Headless mode
-python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081 --headless
-
-# Disable storage state (fresh session)
-python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id 0107561000081 --no-storage-state
-
-# Different company
-python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id <ANY_13_DIGIT_JURISTIC_ID>
-```
-
-**Outputs (in `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/`):**
-- `dbd_result.json` — raw captured/encrypted payloads + debug info
-- `dbd_result_decrypted.json` — decrypted version with all company data
-- `storage_state.json` — saved Playwright cookies/localStorage (gitignored)
-
-#### Anti-Bot System (Imperva Incapsula)
-
-The site uses Incapsula anti-bot protection. When blocked:
-- API responses are HTML strings containing `_Incapsula_Resource` or `Incapsula incident ID`
-- These are NOT valid JSON — they look like valid HTTP 200 responses
-
-**Detection functions:**
-```python
-def is_blocked_payload(data) -> bool:
-    return isinstance(data, dict) and data.get("_blocked_by_incapsula") is True
-
-def is_blocked_text(text: str) -> bool:
-    if not isinstance(text, str): return False
-    lowered = text.lower()
-    return "incapsula incident id" in lowered or "_incapsula_resource" in lowered
-
-def normalize_captured_payload(data):
-    """Returns (normalized_data, blocked: bool)"""
-    if is_blocked_payload(data): return data, True
-    if is_blocked_text(data): return {"_blocked_by_incapsula": True, "_raw_text": data[:500]}, True
-    return data, False
-```
-
-Applied in BOTH the Playwright response handler AND the in-page `fetch()` fallback.
-
-#### Retry Loop
-
-Up to 3 attempts per run with exponential back-off:
-```python
-max_attempts = 3
-for attempt in range(1, max_attempts + 1):
-    results["debug"]["attempts"] = attempt
-    hydrate_profile_page(page, juristic_id)
-    trigger_finance_tab_clicks(page)
-    # ... fetch + capture ...
-    got_profile = isinstance(results.get("profile"), dict)
-    got_financial = isinstance(results.get("financial"), (dict, list))
-    if got_profile and got_financial:
-        break
-    page.wait_for_timeout(3000 * attempt)
-```
-
-#### Storage State (Session Persistence)
-
-Saves Playwright browser cookies after a successful run, reuses them next time to skip Incapsula re-challenges:
-```python
-DEFAULT_STORAGE_STATE = BASE_DIR / "storage_state.json"
-# Loaded: context_kwargs["storage_state"] = str(storage_state_path)
-# Saved after run: context.storage_state(path=str(storage_state_path))
-```
-
-First run after fresh clone: run **non-headless** to let Incapsula pass (visible browser solves challenge automatically). Subsequent runs can use `--headless`.
-
-#### Decryption Pipeline
-
-1. JWT `encKey` extracted from `__NUXT__` runtime config (or HTML fallback)
-2. HKDF-SHA256: `info = f"bdw|v{kid}|{aad_hint}".encode()` with extracted `salt`
-3. AES-GCM decrypt CT with derived key and `iv`
-4. Try zlib decompress (wbits=31 first, then raw), then UTF-8 decode, then JSON parse
-
-#### `debug` Fields in Output
-
-| Field | Meaning |
-|---|---|
-| `debug.status` | `"ok"` / `"partial"` / `"blocked"` / `"unknown"` |
-| `debug.blocked_count` | Number of Incapsula-blocked API calls |
-| `debug.blocked_run` | `true` if any API was blocked |
-| `debug.attempts` | How many retry attempts were made |
-| `debug.storage_state_used` | Path to loaded storage state file (or null) |
-
-In `dbd_result_decrypted.json`:
-| Field | Meaning |
-|---|---|
-| `enc_key_found` | `true` = JWT encKey was found and decryption attempted |
-| `source_status` | Mirror of `debug.status` from raw result |
-| `source_debug` | Mirror of key debug fields |
-
-#### Key API Endpoints Captured
-
-All under `https://datawarehouse.dbd.go.th`:
-- `/api/v1/company-profiles/info/{jpType}/{jpNo}` — company profile
-- `/api/v1/company-profiles/committees/{jpType}/{jpNo}` — board members
-- `/api/v1/company-profiles/committee-signs/{jpType}/{jpNo}` — signing authority
-- `/api/v1/company-profiles/mergers/{jpType}/{jpNo}` — merger/transform history
-- `/api/v1/fin/balancesheet/year/{jpType}/{jpNo}?fiscalYear={year}` — financial statements
-- `/api/v1/fin/submit/{jpType}/{jpNo}?fiscalYear={year}` — filing submission history
-
-`jpType` for most Thai juristic entities = `"7"`. `jpNo` = the 13-digit juristic ID.
-
----
-
-### 5.3 `c_DBD_Company_AI_Summary/c_main.py` — Financial Summary Generator
-
-**What it does:** Reads `y/dbd_result_decrypted.json`, extracts key financial fields, generates a compact JSON + markdown summary (via SiliconFlow LLM or local fallback).
-
-**Run:**
-```powershell
-python c_DBD_Company_AI_Summary/c_main.py
-```
-
-**Outputs (in `c_DBD_Company_AI_Summary/`):**
-- `z_compact_data.json` — structured financial snapshot
-- `z_summary.md` — human-readable analysis
-
-**Key functions:**
-- `extract_summary_fields(data)` → builds `profile_snapshot` + `financial_deep_dive`
-- `summarize_with_ai(compact_data)` → SiliconFlow LLM Thai-language analysis (Qwen/QwQ-32B)
-- `local_human_summary(compact_data)` → plain-text fallback when no API key
-
-**LLM prompt:** Thai-language financial analysis with sections: ภาพรวมบริษัท, วิเคราะห์งบการเงินเชิงลึก, ความเสี่ยงหลัก, มุมมองเชิงปฏิบัติ.
-
-**Important:** Always run `b` first to get fresh `dbd_result_decrypted.json`. If `source_status != "ok"`, c will produce incorrect/empty summaries.
-
----
-
-### 5.4 `d_Settrade_SDK/d_main.py` — Settrade SDK Wrapper
-
-**What it does:** Uses official `settrade-v2` Python SDK to query live market data and brokerage account info.
-
-**Run:**
-```powershell
-python d_Settrade_SDK/d_main.py
-```
-
-**Outputs (in `d_Settrade_SDK/`):**
-- `settrade_company_data.json` — market data + account info
-- `settrade_company_data.md` — human-readable summary
-
-**Requires:** Valid Settrade developer credentials in `config.json` (`SETTRADE.app_id`, `app_secret`, `broker_id`, `app_code`, `derivatives_account_no`).
-
-All modules load config from the workspace root: `Path(__file__).resolve().parent.parent / "config.json"`.
-
-**Key functions:**
-- `build_investor(settrade_cfg)` → creates `settrade_v2.Investor` instance
-- `retrieve_account_info(investor, cfg)` → gets derivatives account info
-- `retrieve_company_market_data(investor, symbol, interval, limit)` → quote + candlestick
-
----
-
-### 5.5 `e_Settrade_Scraper/e_main.py` — Settrade Web Scraper
-
-**What it does:** Uses Playwright to load Settrade website, then calls Settrade REST APIs from within the browser session (no login required).
-
-**Run:**
-```powershell
-python e_Settrade_Scraper/e_main.py --symbol OSP
-python e_Settrade_Scraper/e_main.py --symbol AOT --headless
-```
-
-**Outputs (in `e_Settrade_Scraper/`):**
-- `settrade_{SYMBOL}.json` — all captured API data
-- `settrade_{SYMBOL}.md` — formatted summary
-
-**Confirmed working endpoints (no auth):**
-- `/api/set/stock/{sym}/profile`
-- `/api/set/stock/{sym}/info`
-- `/api/set/stock/{sym}/overview`
-- `/api/set/stock/{sym}/shareholder`
-- `/api/set/stock/{sym}/historical-trading?period=MAX`
-- `/api/set/stock/{sym}/corporate-action`
-
-Financial statements require login — NOT captured by this scraper.
-
-**`probe*.py` files** in `e_Settrade_Scraper/` are experiment/debug scripts from early development. Not part of the main flow.
+### Process-Detail Rule
+For any process-specific debugging, implementation, endpoint contracts, schema notes, or operational caveats, read that process's `<<id>>_AI_Local_Context.md` first.
 
 ---
 
@@ -373,24 +197,13 @@ Run examples committed in `result_examples/`.
 
 ## 8. Known Issues & Edge Cases
 
-### b — Incapsula Blocking
-- **Symptom:** `debug.status = "blocked"`, `blocked_count > 0`, profile/financial are null or `{"_blocked_by_incapsula": true}`
-- **Fix:** Run non-headless (`python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py` without `--headless`). The visible browser is less likely to get challenged. After first successful run, `storage_state.json` is saved and future runs (even headless) reuse the authenticated session.
-- **If still blocked:** Delete `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/storage_state.json` and run non-headless again to get a fresh session.
-
-### b — Wrong juristic ID format
-- Correct: `0107561000081` (13 digits, starts with 0)
-- Wrong: `70107561000081` (14 digits — old test value, incorrect)
-
-### c — Running on blocked b output
-- If `source_status != "ok"`, c will produce partial/empty compact data and a misleading summary
-- Always check `source_status` in `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/dbd_result_decrypted.json` before running c
-- **Not yet implemented:** c guard that aborts when source_status is not ok (suggested next step)
-
-### s_sdk — Sandbox vs Live
-- `broker_id` and `app_code` values determine sandbox vs live environment
-- Sandbox values: per Settrade documentation at `developer.settrade.com`
-- Live brokerage account required for real account data
+- Global caveat: process `b` anti-bot behavior (Incapsula) can affect `b -> c` chain quality.
+- Global caveat: process `d` output depends on valid Settrade credentials and environment.
+- Detailed issue lists are maintained in local context files:
+  - `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_AI_Local_Context.md`
+  - `c_DBD_Company_AI_Summary/c_AI_Local_Context.md`
+  - `d_Settrade_SDK/d_AI_Local_Context.md`
+  - `e_Settrade_Scraper/e_AI_Local_Context.md`
 
 ---
 
@@ -399,7 +212,7 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `c00a987` — "OteEnded[fix]: stabilize y anti-bot flow and refresh examples"
+- **Last commit:** `4914b3b` — "OteEnded[refactor]: rename all process folders and scripts to a-e naming convention"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Gitignored files (do NOT commit):**
@@ -418,28 +231,22 @@ Run examples committed in `result_examples/`.
 Priority order based on current state:
 
 1. **c guard for blocked b output**
-   Add check in `c_DBD_Company_AI_Summary/c_main.py` `main()`:
-   ```python
-   source_status = raw_data.get("source_status")
-   if source_status and source_status != "ok":
-       print(f"ERROR: b output has source_status='{source_status}'. Run b first (non-headless).")
-       return
-   ```
+  Add hard stop when `source_status != "ok"` before summary generation.
 
 2. **Test b with different juristic IDs**
-   Run `python b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_main.py --juristic-id <OTHER_ID>` to verify the scraper generalizes beyond OSOTSPA. The storage state is shared per domain (same cookies for all companies on `datawarehouse.dbd.go.th`).
+  Verify scraper generalization beyond OSOTSPA.
 
 3. **Add `e` results to `result_examples/`**
-   Currently `result_examples/e_Settrade_Scraper/` is empty. Run `python e_Settrade_Scraper/e_main.py --symbol AOT --headless` and commit results.
+  Refresh examples for additional symbols.
 
 4. **Add `d` results to `result_examples/`**
-   `result_examples/d_Settrade_SDK/` is empty. Requires live Settrade credentials to run.
+  Refresh SDK examples (requires valid credentials).
 
 5. **Connect a + b pipelines**
-   a can search for company names and return juristic IDs; b can then scrape the found company. Currently no cross-module orchestration exists.
+  Optional orchestration layer from search results to DBD scrape.
 
 6. **Multiple juristic IDs in one b run**
-   Add `--juristic-ids` list support (loop `get_company_data()` calls) so a batch of companies can be scraped in a single session while reusing the warm Incapsula-bypassed cookies.
+  Add batch mode while reusing warmed session state.
 
 ---
 
