@@ -212,7 +212,7 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `4914b3b` — "OteEnded[refactor]: rename all process folders and scripts to a-e naming convention"
+- **Last commit:** `7bc7982` — "OteEnded[docs]: split global carry-on into per-process local contexts"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Gitignored files (do NOT commit):**
