@@ -777,6 +777,20 @@ def load_local_config(config_path: Path) -> dict:
     return config
 
 
+def resolve_config_path(config_arg: str) -> Path:
+    config_path = Path(config_arg)
+    if config_path.is_absolute():
+        return config_path
+
+    # First honor cwd-relative input (natural CLI behavior).
+    cwd_candidate = (Path.cwd() / config_path).resolve()
+    if cwd_candidate.exists():
+        return cwd_candidate
+
+    # Backward-compatible fallback: resolve relative to this script folder.
+    return (BASE_DIR / config_path).resolve()
+
+
 def wait_loader_overlay_clear(
     page,
     timeout_ms: int = 20000,
@@ -3380,9 +3394,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    config_path = Path(args.config)
-    if not config_path.is_absolute():
-        config_path = (BASE_DIR / config_path).resolve()
+    config_path = resolve_config_path(args.config)
 
     try:
         config = load_local_config(config_path)

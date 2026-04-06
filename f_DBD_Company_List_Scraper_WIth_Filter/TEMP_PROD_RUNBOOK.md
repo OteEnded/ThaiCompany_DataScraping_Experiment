@@ -18,7 +18,7 @@ python -m playwright install chromium
 ## Execute (recommended)
 Run from workspace root:
 ```powershell
-python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.temp_prod.json
+python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_local_config.temp_prod.json
 ```
 
 ## Success checks
