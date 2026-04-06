@@ -26,6 +26,7 @@ DEFAULT_STORAGE_STATE = BASE_DIR / "storage_state.json"
 DEFAULT_LOCAL_CONFIG_PATH = BASE_DIR / "f_local_config.json"
 LAST_RUN_LOG_PATH = BASE_DIR / "last_run.log"
 LAST_PAGE_ON_PATH = BASE_DIR / "last_page_on.png"
+LAST_PAGE_IN_PATH = BASE_DIR / "last_page_in.png"
 BASE_URL = "https://datawarehouse.dbd.go.th/"
 FETCH_ALL_PAGES = -1
 PAGE_SIZE = 10
@@ -206,6 +207,16 @@ def capture_waiting_page(page, reason: str, logger: RunLogger | None = None) -> 
     except Exception as exc:
         if logger:
             logger.log(f"Failed to capture waiting page snapshot for '{reason}': {exc}")
+
+
+def capture_ui_nav_page(page, reason: str, logger: RunLogger | None = None) -> None:
+    try:
+        page.screenshot(path=str(LAST_PAGE_IN_PATH), full_page=True)
+        if logger:
+            logger.log(f"Captured UI-nav snapshot for '{reason}' -> {LAST_PAGE_IN_PATH.name}")
+    except Exception as exc:
+        if logger:
+            logger.log(f"Failed to capture UI-nav snapshot for '{reason}': {exc}")
 
 
 def dismiss_startup_overlays(page) -> None:
@@ -681,6 +692,9 @@ def default_local_config() -> dict:
         "results_timeout_seconds": DEFAULT_RESULTS_TIMEOUT_SECONDS,
         "fetch_all_max_pages": DEFAULT_FETCH_ALL_MAX_PAGES,
         "stuck_refresh_retries": DEFAULT_STUCK_REFRESH_RETRIES,
+        "api_replay_attempt_threshold": 2,
+        "use_ui_probe_rows_on_api_failure": True,
+        "force_ui_probe_rows_for_test": False,
         "storage_state": str(DEFAULT_STORAGE_STATE),
         "use_storage_state": True,
         "filters": {
@@ -729,6 +743,9 @@ def load_local_config(config_path: Path) -> dict:
     stuck_refresh_retries = int(config.get("stuck_refresh_retries", DEFAULT_STUCK_REFRESH_RETRIES))
     config["stuck_refresh_retries"] = max(3, min(5, stuck_refresh_retries))
 
+    api_replay_attempt_threshold = int(config.get("api_replay_attempt_threshold", 2))
+    config["api_replay_attempt_threshold"] = max(1, min(5, api_replay_attempt_threshold))
+
     settle_seconds = int(config.get("settle_seconds", 8))
     config["settle_seconds"] = max(0, settle_seconds)
 
@@ -740,6 +757,8 @@ def load_local_config(config_path: Path) -> dict:
         config["search_term"] = config["query"]
     config["sort_label"] = str(config.get("sort_label", "จังหวัด (ก-ฮ)")).strip()
     config["prefer_direct_search_url"] = bool(config.get("prefer_direct_search_url", True))
+    config["use_ui_probe_rows_on_api_failure"] = bool(config.get("use_ui_probe_rows_on_api_failure", True))
+    config["force_ui_probe_rows_for_test"] = bool(config.get("force_ui_probe_rows_for_test", False))
 
     config["headless"] = bool(config.get("headless", False))
     config["channel"] = str(config.get("channel", "chrome"))
@@ -1258,12 +1277,23 @@ def get_ui_current_page_number(page) -> int | None:
                     return Number.isFinite(n) && n > 0 ? n : null;
                 };
 
+                const isVisible = (el) => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    if (style.visibility === 'hidden' || style.display === 'none') return false;
+                    const r = el.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                };
+
                 // Paginator input (UI shape: "หน้า [1] / 3,191")
-                const inputCandidates = [
-                    document.querySelector('.pagination input[type="number"]'),
-                    document.querySelector('.pagination input[type="text"]'),
-                    document.querySelector('input[aria-label="page"]')
-                ].filter(Boolean);
+                const inputCandidates = Array.from(
+                    document.querySelectorAll(
+                        '.pagination input[type="number"], .pagination input[type="text"], ul.nav.pager input.form-control.numeric, .nav.pager input.form-control.numeric, input[aria-label="page"]'
+                    )
+                )
+                    .filter((el) => isVisible(el))
+                    // Prefer lower (usually active) paginator when multiple copies exist.
+                    .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top);
                 for (const input of inputCandidates) {
                     const n = parseNum(input.value || input.getAttribute('value') || input.textContent || '');
                     if (n) return n;
@@ -1272,8 +1302,7 @@ def get_ui_current_page_number(page) -> int | None:
                 // Broader fallback: any visible input located in a container text like "หน้า ... / ...".
                 const allInputs = Array.from(document.querySelectorAll('input[type="number"], input[type="text"]'));
                 for (const input of allInputs) {
-                    const box = input.getBoundingClientRect();
-                    if (!box || box.width <= 0 || box.height <= 0) continue;
+                    if (!isVisible(input)) continue;
                     const parentText = String(input.closest('div, span, li, nav')?.textContent || '').replace(/\s+/g, ' ');
                     if (!/หน้า\s*\d*\s*\//i.test(parentText) && !/\b\d+\s*\/\s*[\d,]+\b/.test(parentText)) continue;
                     const n = parseNum(input.value || input.getAttribute('value') || '');
@@ -1371,6 +1400,13 @@ def ui_probe_navigate_to_page(
     logger: RunLogger | None = None,
     max_hops: int = 20,
 ) -> list[dict]:
+    try:
+        target_page = int(target_page)
+    except Exception:
+        if logger:
+            logger.log(f"UI probe fallback skipped: invalid target_page={target_page}")
+        return []
+
     if target_page <= 1:
         if logger:
             logger.log("UI probe fallback: target_page<=1, extracting current DOM rows")
@@ -1393,6 +1429,150 @@ def ui_probe_navigate_to_page(
 
     if logger:
         logger.log(f"UI probe fallback: navigate current_page={current_page} -> target_page={target_page}")
+    capture_ui_nav_page(page, f"ui_probe_start_target_{target_page}", logger=logger)
+
+    def reached_target_page(expected_page: int) -> bool:
+        detected = get_ui_current_page_number(page)
+        return bool(detected and detected == expected_page)
+
+    def get_table_state() -> dict:
+        try:
+            return page.evaluate(
+                """
+                () => {
+                    const tbody = document.querySelector('#table-filter-data tbody');
+                    const rows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+                    const loadingRows = rows.filter((r) => (r.textContent || '').toLowerCase().includes('loading')).length;
+                    const dataRows = rows.filter((r) => {
+                        const txt = (r.textContent || '').toLowerCase();
+                        const tdCount = r.querySelectorAll('td').length;
+                        return tdCount >= 4 && !txt.includes('loading');
+                    }).length;
+                    const totalText = (document.querySelector('#sTotalElements')?.textContent || '').trim();
+                    const pagerText = (document.querySelector('ul.nav.pager, .nav.pager, .pagination')?.textContent || '').replace(/\s+/g, ' ').trim();
+                    return {
+                        hasTbody: !!tbody,
+                        rowCount: rows.length,
+                        loadingRows,
+                        dataRows,
+                        totalText,
+                        pagerText,
+                    };
+                }
+                """
+            ) or {}
+        except Exception:
+            return {}
+
+    def rescue_recommit_target(expected_page: int) -> bool:
+        try:
+            recommitted = bool(
+                page.evaluate(
+                    """
+                    ({ target }) => {
+                        const isVisible = (el) => {
+                            if (!el) return false;
+                            const style = window.getComputedStyle(el);
+                            if (style.visibility === 'hidden' || style.display === 'none') return false;
+                            const r = el.getBoundingClientRect();
+                            return r.width > 0 && r.height > 0;
+                        };
+
+                        const pagerRoots = Array.from(document.querySelectorAll('ul.nav.pager, .nav.pager, .pagination, [class*="pager"]'));
+                        for (const root of pagerRoots) {
+                            const txt = String(root.textContent || '').replace(/\s+/g, ' ');
+                            if (!(/หน้า\s*\/?/i.test(txt) || /\b\d+\s*\/\s*[\d,]+\b/.test(txt))) continue;
+
+                            const input = Array.from(root.querySelectorAll('input[type="number"], input[type="text"]')).find(isVisible);
+                            if (input) {
+                                input.focus();
+                                input.value = String(target);
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                                input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+                                input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
+
+                                const controls = Array.from(root.querySelectorAll('button, a, [role="button"]')).filter(isVisible);
+                                const arrow = controls
+                                    .map((el) => {
+                                        const txt2 = (el.textContent || '').trim().toLowerCase();
+                                        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+                                        const score = (/next|ถัดไป|>|›|»/.test(txt2) || /next/.test(aria)) ? 10 : 0;
+                                        return { el, score };
+                                    })
+                                    .sort((a, b) => b.score - a.score)[0]?.el;
+                                if (arrow) {
+                                    arrow.click();
+                                }
+                                input.blur();
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    """,
+                    {"target": expected_page},
+                )
+            )
+            if recommitted:
+                wait_for_table_data(
+                    page,
+                    timeout_ms=5000,
+                    logger=logger,
+                    wait_reason=f"ui_probe_rescue_recommit_{expected_page}",
+                )
+                page.wait_for_timeout(700)
+            return recommitted
+        except Exception:
+            return False
+
+    def wait_target_page_rows(expected_page: int, wait_ms: int) -> list[dict]:
+        deadline = time.perf_counter() + max(1000, int(wait_ms)) / 1000.0
+        poll_round = 0
+        rescue_count = 0
+        while time.perf_counter() < deadline:
+            poll_round += 1
+            detected = get_ui_current_page_number(page)
+            if detected == expected_page:
+                rows = extract_company_candidates_from_dom(page)
+                if rows:
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: confirmed page {expected_page} with rows={len(rows)} after delayed-load wait"
+                        )
+                    return rows
+                # Give table time to render when page number has changed but rows are still blank.
+                wait_for_table_data(
+                    page,
+                    timeout_ms=2500,
+                    logger=logger,
+                    wait_reason=f"ui_probe_delayed_table_{expected_page}",
+                )
+                if logger and poll_round % 2 == 0:
+                    state = get_table_state()
+                    logger.log(
+                        "UI probe fallback: target page reached but rows empty "
+                        f"poll={poll_round} state={json.dumps(state, ensure_ascii=False)}"
+                    )
+                if poll_round % 3 == 0 and rescue_count < 3:
+                    rescue_count += 1
+                    recommitted = rescue_recommit_target(expected_page)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: rescue recommit target page {expected_page} "
+                            f"attempt={rescue_count}/3 success={recommitted}"
+                        )
+
+            if poll_round % 4 == 0:
+                capture_ui_nav_page(page, f"ui_probe_wait_rows_{expected_page}", logger=logger)
+            page.wait_for_timeout(700)
+
+        if logger:
+            logger.log(
+                f"UI probe fallback: page {expected_page} reached but rows did not load within {wait_ms} ms"
+            )
+        capture_ui_nav_page(page, f"ui_probe_wait_rows_timeout_{expected_page}", logger=logger)
+        return []
 
     # Try generic Thai paginator input jump ("หน้า [input] / total") without relying on .pagination class.
     try:
@@ -1488,8 +1668,16 @@ def ui_probe_navigate_to_page(
                     wait_reason=f"ui_probe_input_generic_{target_page}",
                 )
                 page.wait_for_timeout(600)
-                rows = extract_company_candidates_from_dom(page)
+                if not reached_target_page(target_page):
+                    capture_ui_nav_page(page, f"ui_probe_generic_not_reached_{target_page}", logger=logger)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: generic jump did not confirm active page {target_page}"
+                        )
+                    raise RuntimeError("generic_jump_not_confirmed")
+                rows = wait_target_page_rows(target_page, min(timeout_ms, 25000))
                 if rows:
+                    capture_ui_nav_page(page, f"ui_probe_generic_success_{target_page}", logger=logger)
                     if logger:
                         logger.log(
                             f"UI probe fallback: generic Thai paginator input jump succeeded for page {target_page} rows={len(rows)}"
@@ -1628,8 +1816,16 @@ def ui_probe_navigate_to_page(
                     wait_reason=f"ui_probe_input_playwright_{target_page}",
                 )
                 page.wait_for_timeout(800)
-                rows = extract_company_candidates_from_dom(page)
+                if not reached_target_page(target_page):
+                    capture_ui_nav_page(page, f"ui_probe_playwright_not_reached_{target_page}", logger=logger)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: Playwright jump did not confirm active page {target_page}"
+                        )
+                    raise RuntimeError("playwright_jump_not_confirmed")
+                rows = wait_target_page_rows(target_page, min(timeout_ms, 25000))
                 if rows:
+                    capture_ui_nav_page(page, f"ui_probe_playwright_success_{target_page}", logger=logger)
                     if logger:
                         logger.log(
                             f"UI probe fallback: Playwright paginator input jump succeeded for page {target_page} rows={len(rows)}"
@@ -1692,8 +1888,16 @@ def ui_probe_navigate_to_page(
                     wait_reason=f"ui_probe_input_jump_{target_page}",
                 )
                 page.wait_for_timeout(1200)
-                rows = extract_company_candidates_from_dom(page)
+                if not reached_target_page(target_page):
+                    capture_ui_nav_page(page, f"ui_probe_input_not_reached_{target_page}", logger=logger)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: input jump did not confirm active page {target_page}"
+                        )
+                    raise RuntimeError("input_jump_not_confirmed")
+                rows = wait_target_page_rows(target_page, min(timeout_ms, 25000))
                 if rows:
+                    capture_ui_nav_page(page, f"ui_probe_input_success_{target_page}", logger=logger)
                     if logger:
                         logger.log(
                             f"UI probe fallback: paginator input jump succeeded for page {target_page} rows={len(rows)}"
@@ -1745,7 +1949,17 @@ def ui_probe_navigate_to_page(
                     wait_reason=f"ui_probe_page_{target_page}",
                 )
                 page.wait_for_timeout(1200)
-                return extract_company_candidates_from_dom(page)
+                if not reached_target_page(target_page):
+                    capture_ui_nav_page(page, f"ui_probe_numeric_not_reached_{target_page}", logger=logger)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: numeric click did not confirm active page {target_page}"
+                        )
+                    raise RuntimeError("numeric_jump_not_confirmed")
+                rows = wait_target_page_rows(target_page, min(timeout_ms, 25000))
+                if rows:
+                    capture_ui_nav_page(page, f"ui_probe_numeric_success_{target_page}", logger=logger)
+                return rows
         except Exception:
             continue
 
@@ -1904,6 +2118,7 @@ def ui_probe_navigate_to_page(
                 pass
 
         if not moved:
+            capture_ui_nav_page(page, f"ui_probe_no_move_target_{target_page}", logger=logger)
             break
 
         hops += 1
@@ -1918,11 +2133,12 @@ def ui_probe_navigate_to_page(
             break
 
     if current_page == target_page:
-        return extract_company_candidates_from_dom(page)
+        return wait_target_page_rows(target_page, min(timeout_ms, 30000))
     if logger:
         logger.log(
             f"UI probe fallback failed to reach target page {target_page}; ended at page {current_page}"
         )
+    capture_ui_nav_page(page, f"ui_probe_fail_target_{target_page}", logger=logger)
     return []
 
 
@@ -1939,8 +2155,11 @@ def replay_infos_pages(
     on_slow_or_failed_attempt=None,
     slow_attempt_seconds: float = float(DEFAULT_API_ATTEMPT_TIMEOUT_SECONDS),
     request_timeout_seconds: int = DEFAULT_API_ATTEMPT_TIMEOUT_SECONDS,
+    ui_probe_trigger_attempt: int = 2,
     duplicate_heavy_min_new_rows: int = 0,
     duplicate_heavy_consecutive_limit: int = 3,
+    use_ui_probe_rows_on_api_failure: bool = True,
+    force_ui_probe_rows_for_test: bool = False,
 ) -> tuple[list[dict], list[dict]]:
     if pages == 1:
         return [], []
@@ -1970,6 +2189,7 @@ def replay_infos_pages(
     known_last_is_cap_bound = fetch_all and not bool(total_pages_hint)
     eta_last_page_bound = min(final_page, known_last_page) if known_last_page else final_page
     duplicate_heavy_consecutive_count = 0
+    ui_probe_trigger_attempt = max(1, min(max_retries + 1, int(ui_probe_trigger_attempt)))
     if logger:
         mode_text = "fetch-all" if fetch_all else str(pages)
         if known_last_is_cap_bound:
@@ -1979,8 +2199,13 @@ def replay_infos_pages(
         logger.log(
             f"API replay pagination started. target={mode_text}, resolved_last_page={known_text}, page_size={PAGE_SIZE}"
         )
+        logger.log(
+            f"API replay fallback threshold: ui_probe_trigger_attempt={ui_probe_trigger_attempt}"
+        )
 
-    for page_no in range(2, final_page + 1):
+    current_page = 2
+    while current_page <= final_page:
+        page_no = current_page
         page_started_at = time.perf_counter()
         page_body = dict(body_template)
         page_body["currentPage"] = page_no
@@ -2003,7 +2228,45 @@ def replay_infos_pages(
         rows = []
         attempt = 0
         ui_probe_done = False
+        ui_probe_rows_cache = []
+        used_forced_ui_rows = False
+
+        if force_ui_probe_rows_for_test and on_slow_or_failed_attempt:
+            try:
+                if logger:
+                    logger.log(f"Force-UI test mode: probing UI rows for page {page_no} before API request")
+                forced_ui_rows = on_slow_or_failed_attempt(
+                    page_no=page_no,
+                    attempt_no=0,
+                    status=-7,
+                    error="force_ui_probe_rows_for_test",
+                    elapsed_seconds=0.0,
+                ) or []
+                for row in forced_ui_rows:
+                    row["source_page"] = page_no
+                if forced_ui_rows:
+                    ui_probe_rows_cache = forced_ui_rows
+                    rows = forced_ui_rows
+                    used_forced_ui_rows = True
+                    ui_probe_done = True
+                    replay = {
+                        "ok": False,
+                        "status": -7,
+                        "error": "force_ui_probe_rows_for_test",
+                        "decrypted_error": None,
+                    }
+                    if logger:
+                        logger.log(
+                            f"Force-UI test mode: using {len(forced_ui_rows)} UI rows for page {page_no} and skipping API replay"
+                        )
+            except Exception as forced_exc:
+                if logger:
+                    logger.log(f"Force-UI test mode probe failed for page {page_no}: {forced_exc}")
+
         while attempt <= max_retries:
+            if used_forced_ui_rows:
+                break
+
             attempt_started = time.perf_counter()
             if logger:
                 logger.log(
@@ -2028,6 +2291,10 @@ def replay_infos_pages(
                     f"rows={len(rows)} elapsed={attempt_elapsed:.2f}s "
                     f"error={replay.get('error') or replay.get('decrypted_error') or ''}"
                 )
+            if logger and not rows and (200 <= status < 300):
+                logger.log(
+                    f"API page {page_no} returned HTTP {status} with empty rows; accepting empty page as terminal candidate"
+                )
             if rows or (200 <= status < 300):
                 break
 
@@ -2036,10 +2303,12 @@ def replay_infos_pages(
                     f"API request timeout page={page_no} attempt={attempt + 1} timeout={request_timeout_seconds}s; retrying"
                 )
 
-            should_ui_probe = (
-                attempt_elapsed >= slow_attempt_seconds
-                or status in (-2, -1)
-            )
+            should_ui_probe = (attempt + 1) >= ui_probe_trigger_attempt
+            if logger and on_slow_or_failed_attempt and not ui_probe_done and not should_ui_probe:
+                logger.log(
+                    f"UI probe not triggered yet for page {page_no}: "
+                    f"attempt={attempt + 1} threshold={ui_probe_trigger_attempt} status={status}"
+                )
             if (
                 on_slow_or_failed_attempt
                 and not ui_probe_done
@@ -2052,7 +2321,7 @@ def replay_infos_pages(
                         )
                     if logger:
                         logger.log(
-                            f"API page {page_no} attempt {attempt + 1} failed/slow; triggering UI probe fallback"
+                            f"API page {page_no} attempt {attempt + 1} reached probe threshold; triggering UI probe fallback"
                         )
                     ui_probe_rows = on_slow_or_failed_attempt(
                         page_no=page_no,
@@ -2064,12 +2333,11 @@ def replay_infos_pages(
                     for row in ui_probe_rows:
                         row["source_page"] = page_no
                     if ui_probe_rows:
-                        all_rows.extend(ui_probe_rows)
-                        if on_page_rows:
-                            try:
-                                on_page_rows(page_no, ui_probe_rows)
-                            except Exception:
-                                pass
+                        ui_probe_rows_cache = ui_probe_rows
+                        if logger:
+                            logger.log(
+                                f"UI probe fallback captured {len(ui_probe_rows)} rows for page {page_no} (held unless API retries fail)"
+                            )
                 except Exception as probe_exc:
                     if logger:
                         logger.log(f"UI probe fallback failed for page {page_no}: {probe_exc}")
@@ -2082,6 +2350,20 @@ def replay_infos_pages(
                     f"API request page_fetch_retry page={page_no} next_attempt={attempt + 1} reason=status_{status}_and_rows_{len(rows)}"
                 )
             page.wait_for_timeout(base_delay_ms + attempt * 700)
+
+        using_ui_fallback_rows = False
+        if not rows and ui_probe_rows_cache and use_ui_probe_rows_on_api_failure:
+            rows = ui_probe_rows_cache
+            using_ui_fallback_rows = True
+            if logger:
+                logger.log(
+                    f"Using UI probe rows for page {page_no} because API retries returned no rows"
+                )
+        elif not rows and ui_probe_rows_cache and not use_ui_probe_rows_on_api_failure:
+            if logger:
+                logger.log(
+                    f"Discarding UI probe rows for page {page_no} due to config: use_ui_probe_rows_on_api_failure=false"
+                )
 
         for row in rows:
             row["source_page"] = page_no
@@ -2119,9 +2401,16 @@ def replay_infos_pages(
                 "attempts": attempt + 1,
                 "duration_seconds": round(time.perf_counter() - page_started_at, 3),
                 "error": (replay.get("error") or replay.get("decrypted_error")) if replay else "no_replay_result",
+                "used_ui_fallback_rows": using_ui_fallback_rows,
+                "used_forced_ui_rows": used_forced_ui_rows,
             }
         )
         if logger:
+            source_mode = "api"
+            if stats[-1]["used_forced_ui_rows"]:
+                source_mode = "ui_forced"
+            elif stats[-1]["used_ui_fallback_rows"]:
+                source_mode = "ui_fallback"
             if known_last_is_cap_bound:
                 known_text = f"<={known_last_page}"
             else:
@@ -2134,7 +2423,7 @@ def replay_infos_pages(
                 remaining_pages = max(0, eta_last_page_bound - page_no)
                 eta_text = format_duration(avg_page_sec * remaining_pages)
             logger.log(
-                f"API replay done {page_no}/{known_text}: status={stats[-1]['status']} rows={len(rows)} attempts={stats[-1]['attempts']}"
+                f"API replay done {page_no}/{known_text}: status={stats[-1]['status']} rows={len(rows)} attempts={stats[-1]['attempts']} source={source_mode}"
             )
             logger.log(
                 "API replay timing "
@@ -2162,6 +2451,8 @@ def replay_infos_pages(
                     f"API replay reached last page at {page_no}: rows={len(rows)} < PAGE_SIZE({PAGE_SIZE})"
                 )
             break
+
+        current_page += 1
 
     return all_rows, stats
 
@@ -2363,6 +2654,7 @@ def wait_for_table_data(
     logger: RunLogger | None = None,
     wait_reason: str = "wait_for_table_data",
 ) -> bool:
+    started = time.perf_counter()
     try:
         page.wait_for_function(
             """
@@ -2395,6 +2687,8 @@ def wait_for_table_data(
             """,
             timeout=timeout_ms,
         )
+        if logger:
+            logger.log(f"Table data ready ({wait_reason}) in {time.perf_counter() - started:.2f}s")
         return True
     except Exception:
         if logger:
@@ -2415,6 +2709,9 @@ def scrape_company_list(
     results_timeout_seconds: int,
     fetch_all_max_pages: int,
     stuck_refresh_retries: int,
+    api_replay_attempt_threshold: int,
+    use_ui_probe_rows_on_api_failure: bool,
+    force_ui_probe_rows_for_test: bool,
     sort_label: str,
     prefer_direct_search_url: bool,
     filters: dict | None = None,
@@ -2457,6 +2754,11 @@ def scrape_company_list(
             "ui_filters_applied": False,
             "results_timeout_seconds": results_timeout_seconds,
             "stuck_refresh_retries": stuck_refresh_retries,
+            "api_replay_attempt_threshold": api_replay_attempt_threshold,
+            "use_ui_probe_rows_on_api_failure": use_ui_probe_rows_on_api_failure,
+            "force_ui_probe_rows_for_test": force_ui_probe_rows_for_test,
+            "api_response_hits_by_endpoint": {},
+            "infos_contract_updates": 0,
         },
     }
     results_timeout_ms = max(10, results_timeout_seconds) * 1000
@@ -2471,6 +2773,11 @@ def scrape_company_list(
             f"Search strategy: direct_url_first={prefer_direct_search_url}, storage_state={'enabled' if storage_state_path else 'disabled'}"
         )
         logger.log(f"Active filters: {json.dumps(filters or {}, ensure_ascii=False)}")
+        logger.log(
+            f"Runtime toggles: use_ui_probe_rows_on_api_failure={use_ui_probe_rows_on_api_failure}, "
+            f"force_ui_probe_rows_for_test={force_ui_probe_rows_for_test}, "
+            f"api_replay_attempt_threshold={api_replay_attempt_threshold}"
+        )
 
     with sync_playwright() as p:
         connected_via_cdp = bool(cdp_url)
@@ -2515,12 +2822,33 @@ def scrape_company_list(
             if "/api/" not in url:
                 return
 
+            endpoint_key = urlsplit(url).path or url
+            endpoint_hits = result["debug"].setdefault("api_response_hits_by_endpoint", {})
+            endpoint_hits[endpoint_key] = int(endpoint_hits.get(endpoint_key, 0)) + 1
+
             request = response.request
             if "/api/v1/company-profiles/infos" in url:
                 current_contract = extract_request_contract(request)
                 result["latest_infos_contract"] = current_contract
+                result["debug"]["infos_contract_updates"] = int(result["debug"].get("infos_contract_updates", 0)) + 1
                 if result.get("infos_contract") is None:
                     result["infos_contract"] = current_contract
+                    if logger:
+                        body = current_contract.get("body") if isinstance(current_contract, dict) else None
+                        logger.log(
+                            "Captured initial infos contract "
+                            f"method={current_contract.get('method')} "
+                            f"currentPage={(body or {}).get('currentPage')} "
+                            f"sortBy={(body or {}).get('sortBy')}"
+                        )
+                elif logger and result["debug"]["infos_contract_updates"] % 10 == 0:
+                    body = current_contract.get("body") if isinstance(current_contract, dict) else None
+                    logger.log(
+                        "Updated infos contract snapshot "
+                        f"updates={result['debug']['infos_contract_updates']} "
+                        f"currentPage={(body or {}).get('currentPage')} "
+                        f"sortBy={(body or {}).get('sortBy')}"
+                    )
 
             body = parse_response_body(response)
             if body is None:
@@ -2543,6 +2871,11 @@ def scrape_company_list(
                     "ok": response.ok,
                 }
             )
+            if logger and len(result["api_hits"]) % 50 == 0:
+                logger.log(
+                    f"API traffic snapshot: total_hits={len(result['api_hits'])}, "
+                    f"unique_endpoints={len(result['debug'].get('api_response_hits_by_endpoint', {}))}"
+                )
 
         context.on("response", on_response)
 
@@ -2706,6 +3039,10 @@ def scrape_company_list(
                 logger.log(f"Sort apply exception: {exc}")
 
         ui_page_limit = 1 if pages == FETCH_ALL_PAGES else pages
+        if logger:
+            logger.log(
+                f"UI crawl plan resolved: ui_page_limit={ui_page_limit}, pages_requested={pages}"
+            )
         for current_page in range(1, ui_page_limit + 1):
             dom_candidates = extract_company_candidates_from_dom(page)
             result["companies"].extend(dom_candidates)
@@ -2753,6 +3090,12 @@ def scrape_company_list(
 
         replay_contract_source = result.get("latest_infos_contract") or result.get("infos_contract")
         if replay_contract_source:
+            if logger:
+                logger.log(
+                    "Replay contract ready: "
+                    f"method={str(replay_contract_source.get('method') or 'POST').upper()}, "
+                    f"url={replay_contract_source.get('url') or ''}"
+                )
             active_filters = has_active_filters(filters)
             effective_body = replay_contract_source.get("body")
             need_fallback_payload = active_filters and (
@@ -2861,6 +3204,57 @@ def scrape_company_list(
             if effective_body is not None:
                 replay_contract["body"] = effective_body
 
+            def retry_ui_probe_with_refresh(page_no: int) -> list[dict]:
+                if logger:
+                    logger.log(
+                        f"UI probe recovery: refreshing page and rebuilding filter context before retrying target_page={page_no}"
+                    )
+                try:
+                    page.reload(wait_until="domcontentloaded", timeout=60000)
+                    dismiss_startup_overlays(page)
+                    wait_for_table_data(
+                        page,
+                        timeout_ms=results_timeout_ms,
+                        logger=logger,
+                        wait_reason="ui_probe_recovery_reload_wait",
+                    )
+                    page.wait_for_timeout(1200)
+
+                    if has_active_filters(filters):
+                        apply_filters_with_refresh_recovery(
+                            page,
+                            filters,
+                            results_timeout_ms=results_timeout_ms,
+                            max_refresh_retries=stuck_refresh_retries,
+                            logger=logger,
+                            dumps_dir=dumps_dir,
+                        )
+
+                    apply_sort_via_ui(page, sort_label, logger=logger)
+                    wait_for_table_data(
+                        page,
+                        timeout_ms=results_timeout_ms,
+                        logger=logger,
+                        wait_reason="ui_probe_recovery_after_filters_sort",
+                    )
+                    page.wait_for_timeout(1000)
+
+                    recovered_rows = ui_probe_navigate_to_page(
+                        page,
+                        target_page=page_no,
+                        timeout_ms=results_timeout_ms,
+                        logger=logger,
+                    )
+                    if logger:
+                        logger.log(
+                            f"UI probe recovery retry result: target_page={page_no}, rows_seen={len(recovered_rows)}"
+                        )
+                    return recovered_rows
+                except Exception as recovery_exc:
+                    if logger:
+                        logger.log(f"UI probe recovery failed for target_page={page_no}: {recovery_exc}")
+                    return []
+
             def on_replay_probe_attempt(page_no: int, attempt_no: int, status: int, error: str, elapsed_seconds: float):
                 ui_rows = ui_probe_navigate_to_page(
                     page,
@@ -2868,12 +3262,12 @@ def scrape_company_list(
                     timeout_ms=results_timeout_ms,
                     logger=logger,
                 )
+                if not ui_rows:
+                    ui_rows = retry_ui_probe_with_refresh(page_no)
                 if logger:
                     logger.log(
-                        f"UI probe fallback result page={page_no} attempt={attempt_no} status={status} elapsed={elapsed_seconds:.2f}s rows={len(ui_rows)}"
+                        f"UI probe fallback probe page={page_no} attempt={attempt_no} status={status} elapsed={elapsed_seconds:.2f}s rows_seen={len(ui_rows)}"
                     )
-                if csv_stream_writer and ui_rows:
-                    csv_stream_writer.append_rows(ui_rows, source_label=f"ui_probe_page_{page_no}")
                 return ui_rows
 
             replay_rows, replay_stats = replay_infos_pages(
@@ -2889,6 +3283,9 @@ def scrape_company_list(
                     else None
                 ),
                 on_slow_or_failed_attempt=on_replay_probe_attempt,
+                ui_probe_trigger_attempt=api_replay_attempt_threshold,
+                use_ui_probe_rows_on_api_failure=use_ui_probe_rows_on_api_failure,
+                force_ui_probe_rows_for_test=force_ui_probe_rows_for_test,
             )
             result["debug"]["api_replay_page_stats"] = replay_stats
             if replay_stats:
@@ -2928,6 +3325,12 @@ def scrape_company_list(
             browser.close()
 
     # Deduplicate by juristic_id first, fallback to profile_url.
+    ui_source_rows = len(result.get("companies") or [])
+    api_source_rows = len(result.get("api_candidates") or [])
+    if logger:
+        logger.log(
+            f"Pre-dedup source counts: ui_rows={ui_source_rows}, api_rows={api_source_rows}, combined={ui_source_rows + api_source_rows}"
+        )
     uniq = {}
     for item in result["companies"] + result["api_candidates"]:
         key = item.get("juristic_id") or item.get("profile_url") or ""
@@ -2958,6 +3361,10 @@ def scrape_company_list(
         logger.log(
             f"API hit summary: total_hits={result['api_hit_summary']['total_hits']}, unique_urls={result['api_hit_summary']['unique_urls']}"
         )
+        endpoint_hits = result.get("debug", {}).get("api_response_hits_by_endpoint", {})
+        if endpoint_hits:
+            top_hits = sorted(endpoint_hits.items(), key=lambda kv: kv[1], reverse=True)[:5]
+            logger.log(f"API endpoint hit breakdown(top5): {json.dumps(top_hits, ensure_ascii=False)}")
 
     result["timing"]["overall_seconds"] = round(time.perf_counter() - run_started_at, 3)
 
@@ -3004,6 +3411,9 @@ def main() -> None:
             results_timeout_seconds=config["results_timeout_seconds"],
             fetch_all_max_pages=config["fetch_all_max_pages"],
             stuck_refresh_retries=config["stuck_refresh_retries"],
+            api_replay_attempt_threshold=config["api_replay_attempt_threshold"],
+            use_ui_probe_rows_on_api_failure=config["use_ui_probe_rows_on_api_failure"],
+            force_ui_probe_rows_for_test=config["force_ui_probe_rows_for_test"],
             sort_label=config["sort_label"],
             prefer_direct_search_url=config["prefer_direct_search_url"],
             filters=filters,

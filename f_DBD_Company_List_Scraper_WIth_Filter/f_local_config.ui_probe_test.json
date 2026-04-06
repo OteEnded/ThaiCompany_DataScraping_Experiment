@@ -3,14 +3,16 @@
   "query": "บริษัท",
   "sort_label": "",
   "prefer_direct_search_url": true,
-  "pages": -1,
+  "pages": 3,
   "headless": false,
   "channel": "chromium",
   "settle_seconds": 8,
   "cdp_url": "",
   "results_timeout_seconds": 180,
-  "fetch_all_max_pages": 3300,
-  "api_replay_attempt_threshold": 2,
+  "fetch_all_max_pages": 3,
+  "stuck_refresh_retries": 4,
+  "use_ui_probe_rows_on_api_failure": true,
+  "force_ui_probe_rows_for_test": true,
   "storage_state": "storage_state.json",
   "use_storage_state": true,
   "filters": {
@@ -33,5 +35,3 @@
     "assets_max": null
   }
 }
-
-

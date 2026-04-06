@@ -360,3 +360,68 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
   2. fallback `pvCode`
   3. fallback `jpName`
 - Keep final post-sort by province for consistent output ordering.
+
+## Latest Update (2026-04-06, Proof Run + Context Refresh)
+
+### User Request Covered
+- User asked to prove whether the new UI delayed-load/navigation hardening is fixed, and update this local context file with current state.
+
+### Proof Runs Executed Today
+1. Forced UI test with filters
+  - Config: `f_local_config.ui_probe_test.json`
+  - Run ID: `101500-pid9144`
+  - Outcome: run progressed to filter-toggle wait and became unreliable in this session; not a clean end-to-end proof run.
+
+2. Forced UI test without filters (isolation run for pagination behavior)
+  - Config: `f_local_config.ui_probe_nofilter_test.json` (new)
+  - Run ID: `101601-pid20684`
+  - Confirmed evidence from `last_run.log`:
+    - page 1 loaded and captured rows (`UI page 1 captured: rows=10`)
+    - UI probe moved to target page 2 (`navigate current_page=1 -> target_page=2`)
+    - delayed-load logic detected loading-only table state on page 2 (`rowCount=1, loadingRows=1, dataRows=0`)
+    - rescue recommit logic executed (`rescue recommit target page 2 attempt=1/3 success=True`)
+    - still no rows within delayed-load wait (`page 2 reached but rows did not load within 25000 ms`)
+
+### Current Conclusion (evidence-based)
+- UI fallback reliability is improved in code and diagnostics (recommit + delayed-load checks are running as designed), but the issue is **not yet proven fixed** for stable UI-only page extraction beyond page 1 in live runs.
+- In the latest proof run, page 2 remained in loading-row state despite rescue attempts.
+
+### Artifacts / Config Added Today
+- New test config: `f_local_config.ui_probe_nofilter_test.json`
+- Updated runtime evidence: `last_run.log`, `last_page_in.png`, `last_page_on.png`
+
+### Recommended Next Hardening Step
+1. Add a deterministic row-refresh escape path when table state is `loadingRows>0 && dataRows=0` for repeated polls on a confirmed target page:
+  - trigger controlled local context rebuild (small reload + paginator reacquire) and re-enter target page once,
+  - then hard-fail page with explicit reason if still loading-only.
+
+## Latest Update (2026-04-06, Temp Handoff for Manual CI/CD)
+
+### What Was Added For Proof Control
+- Added dedicated proof runner: `f_ui_probe_page5_test.py`
+- Added strict pre-navigation gate:
+  - page-5 jump is blocked until page-1 has real extracted data rows
+  - if page-1 rows never load within timeout, run aborts with explicit blocked reason (`page1_not_loaded`)
+
+### Current Live-Site Constraint
+- DBD web session was unstable during the latest runs.
+- Logs repeatedly showed loading-only table states while waiting for page-1 rows.
+- Because of site instability, a full end-to-end live proof (page-1 loaded -> jump page-5 -> page-5 rows extracted) is still pending.
+
+### What Is Already Proven In Code/Logs
+- Guard logic is active and prevents premature navigation.
+- While page-1 rows are unavailable, script remains in page-1 wait loop and does not jump to page 5.
+
+### Re-Proof Checklist (when site is stable)
+1. Run:
+  - `python f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py --config f_local_config.ui_probe_nofilter_test.json`
+2. Confirm in log:
+  - page-1 loaded rows detected (`loaded_rows > 0`)
+  - navigation attempt to page 5 starts only after that point
+  - page-5 rows extracted successfully
+3. Save proof artifact:
+  - `tmp_ui_probe_page5_result.json` with non-zero `target_page_rows`
+
+### Temp Deployment Note
+- Keep this branch focused on runtime guard behavior and reproducible proof flow.
+- Treat transient loading-only failures as environment instability unless guard sequencing regresses.
