@@ -228,39 +228,16 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `88951e5` — "Migrate processes a/b/d/e to local configs and add process READMEs"
+- **Last commit:** `b5cdf13` — "OteEnded[feat]: harden process-f retries and sync docs/examples"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Pending local changes (not committed yet):**
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py`
-  - Fixed fetch-all (`pages=-1`) replay bug.
-  - Added direct URL-first search (`/juristic/searchInfo?keyword=...`) with search-box fallback.
-  - Added detailed timestamped runtime logging to console + `last_run.log`.
-  - Added page-shift guard when configured pages exceed discovered pages (`total_pages_hint` cap + last-page row-count stop).
-  - Added waiting-state screenshot capture to `last_page_on.png` during UI waits/timeouts.
-  - Added stronger filter-panel readiness checks (toggle readiness + form readiness + overlay-clear retries).
-  - Added replay progress in `current/last` format and explicit `Filtered list total pages: N` logging.
-  - Added replay-body filter guard: if captured infos body lacks filter keys while filters are active, rebuild replay body from config mapping.
-  - Added fetch-all safety cap handling (`fetch_all_max_pages`) for `pages=-1` runs.
-  - Added sort application from config (`sort_label`) and detailed timing summary fields.
-  - Added stuck-loading recovery for filter apply: refresh-and-retry loop with bounded attempts (`stuck_refresh_retries`, clamped 3..5).
-  - Added explicit terminal error logging when refresh retries are exhausted during filter apply.
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.json`
-  - Added `prefer_direct_search_url`, `sort_label`, and `fetch_all_max_pages`; updated active validation filter set.
-- `f_DBD_Company_List_Scraper_WIth_Filter/README.md`
-  - Synced runtime behavior, config keys, diagnostics, and province-sort probing caveat (`pvDesc` instability + workaround rationale).
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md`
-  - Synced config schema/diagnostics and added user-facing province-sort behavior note (requested `pvDesc`, replay `jpName`).
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md`
-  - Synced with latest fixes, 18-page validation notes, and sort probing findings (`pvDesc` vs stable alternatives).
-- `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/f_search_result.json`
-  - Updated to latest validated 18-page reference output.
-- `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/result_packed.csv`
-  - Updated to latest validated 18-page reference output (180 companies).
-- `f_DBD_Company_List_Scraper_WIth_Filter/last_run.log`
-  - New runtime log artifact generated from latest runs.
-- `f_DBD_Company_List_Scraper_WIth_Filter/last_page_on.png`
-  - New latest-wait screenshot artifact generated during UI waiting states.
+- `f_DBD_Company_List_Scraper_WIth_Filter/_probe_sort_options.py` (local probe helper)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.test18.json` (temporary test config)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_search_result_crash.json` (debug crash artifact)
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_page_on.png` (debug screenshot artifact)
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_run.log` (runtime log artifact)
+- `progress_report_for_meneger/` (untracked local folder)
 
 **Gitignored files (do NOT commit):**
 - `config.json` (credentials)
