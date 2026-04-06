@@ -1299,6 +1299,31 @@ def get_ui_current_page_number(page) -> int | None:
                     return r.width > 0 && r.height > 0;
                 };
 
+                // Prefer active page indicator (more reliable than editable inputs).
+                const activeCandidates = [
+                    document.querySelector('li.page-item.active a'),
+                    document.querySelector('li.page-item.active'),
+                    document.querySelector('[aria-current="page"]'),
+                    document.querySelector('.pagination .active')
+                ].filter(Boolean);
+                for (const el of activeCandidates) {
+                    const n = parseNum(el.textContent || '');
+                    if (n) return n;
+                }
+
+                // Fallback: infer page from row index column (ลำดับที่), e.g. 171 => page 18.
+                const tr = document.querySelector('#table-filter-data tbody tr');
+                if (tr) {
+                    const tds = Array.from(tr.querySelectorAll('td'));
+                    if (tds.length >= 2) {
+                        const idx = parseNum(tds[1]?.textContent || '');
+                        if (idx) {
+                            const inferred = Math.floor((idx - 1) / 10) + 1;
+                            if (Number.isFinite(inferred) && inferred > 0) return inferred;
+                        }
+                    }
+                }
+
                 // Paginator input (UI shape: "หน้า [1] / 3,191")
                 const inputCandidates = Array.from(
                     document.querySelectorAll(
@@ -1320,18 +1345,6 @@ def get_ui_current_page_number(page) -> int | None:
                     const parentText = String(input.closest('div, span, li, nav')?.textContent || '').replace(/\s+/g, ' ');
                     if (!/หน้า\s*\d*\s*\//i.test(parentText) && !/\b\d+\s*\/\s*[\d,]+\b/.test(parentText)) continue;
                     const n = parseNum(input.value || input.getAttribute('value') || '');
-                    if (n) return n;
-                }
-
-                const candidates = [
-                    document.querySelector('li.page-item.active a'),
-                    document.querySelector('li.page-item.active'),
-                    document.querySelector('[aria-current="page"]'),
-                    document.querySelector('.pagination .active')
-                ].filter(Boolean);
-
-                for (const el of candidates) {
-                    const n = parseNum(el.textContent || '');
                     if (n) return n;
                 }
 
@@ -1445,8 +1458,37 @@ def ui_probe_navigate_to_page(
         logger.log(f"UI probe fallback: navigate current_page={current_page} -> target_page={target_page}")
     capture_ui_nav_page(page, f"ui_probe_start_target_{target_page}", logger=logger)
 
+    def get_row_inferred_page() -> int | None:
+        try:
+            val = page.evaluate(
+                """
+                () => {
+                    const parseNum = (txt) => {
+                        const m = String(txt || '').replace(/,/g, '').match(/\d+/);
+                        if (!m) return null;
+                        const n = Number(m[0]);
+                        return Number.isFinite(n) && n > 0 ? n : null;
+                    };
+                    const tr = document.querySelector('#table-filter-data tbody tr');
+                    if (!tr) return null;
+                    const tds = Array.from(tr.querySelectorAll('td'));
+                    if (tds.length < 2) return null;
+                    const idx = parseNum(tds[1]?.textContent || '');
+                    if (!idx) return null;
+                    const inferred = Math.floor((idx - 1) / 10) + 1;
+                    return Number.isFinite(inferred) && inferred > 0 ? inferred : null;
+                }
+                """
+            )
+            return int(val) if isinstance(val, int) and val > 0 else None
+        except Exception:
+            return None
+
     def reached_target_page(expected_page: int) -> bool:
         detected = get_ui_current_page_number(page)
+        inferred = get_row_inferred_page()
+        if inferred is not None:
+            return inferred == expected_page
         return bool(detected and detected == expected_page)
 
     def get_table_state() -> dict:
@@ -1550,6 +1592,14 @@ def ui_probe_navigate_to_page(
             if detected == expected_page:
                 rows = extract_company_candidates_from_dom(page)
                 if rows:
+                    inferred = get_row_inferred_page()
+                    if inferred is not None and inferred != expected_page:
+                        if logger:
+                            logger.log(
+                                f"UI probe fallback: page mismatch detected after nav expected={expected_page} inferred_from_rows={inferred}; waiting/retrying"
+                            )
+                        page.wait_for_timeout(700)
+                        continue
                     if logger:
                         logger.log(
                             f"UI probe fallback: confirmed page {expected_page} with rows={len(rows)} after delayed-load wait"
