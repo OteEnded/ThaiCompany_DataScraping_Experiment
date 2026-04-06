@@ -238,11 +238,13 @@ Use `dumps/` files to inspect request/response flow and HTML snapshots.
 
 ### Latest Output Lineage Update (2026-04-06)
 - Added per-row lineage field: `data_from_page`.
+- Added per-row capture timestamp field: `data_retreive_at`.
+- Added per-row source approach field: `data_retrieve_approch` (`api_replay` or `navigate_ui`).
 - Field is populated for all row sources:
   - UI extraction rows,
   - API replay rows,
   - replay-probe rows.
-- `result_packed.csv` now includes `data_from_page`.
+- `result_packed.csv` now includes `data_from_page`, `data_retreive_at`, and `data_retrieve_approch`.
 - Validation status:
   - logic and schema wiring confirmed,
   - uninterrupted live 3-page run evidence is still pending a stable execution window.

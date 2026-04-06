@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-04-06 (process f data_from_page lineage field added; docs synced; awaiting deploy-team/stable-window confirmation for uninterrupted 3-page proof). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-04-06 (process f row lineage/capture metadata fields added: data_from_page, data_retreive_at, data_retrieve_approch; docs synced). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -232,16 +232,16 @@ Run examples committed in `result_examples/`.
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Pending local changes (not committed yet):**
-- `README.md` (root docs sync for page-nav + data_from_page updates)
+- `README.md` (root docs sync for row lineage/capture metadata fields)
 - `AI_CarryOn.md` (this context update)
-- `f_DBD_Company_List_Scraper_WIth_Filter/README.md` (process-f docs sync for page-nav + data_from_page)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md` (lineage column guidance)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md` (latest lineage feature + validation state)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` (added `data_from_page` row lineage key + packed column)
+- `f_DBD_Company_List_Scraper_WIth_Filter/README.md` (process-f docs sync for row lineage/capture metadata fields)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md` (lineage/capture metadata guidance)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md` (latest metadata fields + validation state)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` (added `data_retreive_at` and `data_retrieve_approch` row keys + packed columns)
 
 Notes:
 - Latest focused proof (`--target-page 3`) passed with `target_success=true` and `target_rows=10`.
-- `data_from_page` feature logic is implemented and schema wiring is confirmed.
+- Row metadata features (`data_from_page`, `data_retreive_at`, `data_retrieve_approch`) are implemented and schema wiring is confirmed.
 - Uninterrupted live 3-page proof remains pending stable run window/deploy feedback.
 - Temporary proof artifacts are disposable and should be cleaned after each verification cycle.
 - Process `f` is currently idle (no active test run) while DBD remains intermittently loading-only.
@@ -358,3 +358,4 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_L
 - 2026-04-06: Synced process-`f` config schema across all active local config files and cleaned unused files (`_probe_sort_options.py`, `f_search_result_crash.json`).
 - 2026-04-06: Process `f` fixed ambiguous paginator-arrow behavior after input+Enter (removed auto-arrow clicks in probe/recommit input paths), ran focused no-filter proof on target page 3 (`status=ok`, `target_rows=10`), updated docs/context, and cleaned temporary page-3 probe artifacts.
 - 2026-04-06: Process `f` added row lineage field `data_from_page` across UI/API/probe paths and packed CSV schema, rechecked logic, and synced docs with current validation status (live uninterrupted 3-page artifact still pending stable execution window).
+- 2026-04-06: Process `f` added per-row capture timestamp `data_retreive_at` and per-row source approach `data_retrieve_approch` (`api_replay`/`navigate_ui`) across UI/API/probe paths, and synced docs/context.

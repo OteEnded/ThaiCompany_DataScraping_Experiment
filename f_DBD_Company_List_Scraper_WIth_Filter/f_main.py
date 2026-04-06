@@ -86,6 +86,8 @@ PACKED_COLUMNS = [
     "shareholders_equity_baht",
     "profile_url",
     "data_from_page",
+    "data_retreive_at",
+    "data_retrieve_approch",
 ]
 
 
@@ -2521,9 +2523,14 @@ def replay_infos_pages(
                     f"Discarding UI probe rows for page {page_no} due to config: use_ui_probe_rows_on_api_failure=false"
                 )
 
+        page_retrieve_at = datetime.now().isoformat(timespec="seconds")
         for row in rows:
             row["source_page"] = page_no
             row["data_from_page"] = page_no
+            row["data_retreive_at"] = page_retrieve_at
+            row["data_retrieve_approch"] = (
+                "navigate_ui" if (using_ui_fallback_rows or used_forced_ui_rows) else "api_replay"
+            )
         all_rows.extend(rows)
         appended_rows = len(rows)
         if on_page_rows and rows:
@@ -3212,8 +3219,11 @@ def scrape_company_list(
             )
         for current_page in range(1, ui_page_limit + 1):
             dom_candidates = extract_company_candidates_from_dom(page)
+            ui_retrieve_at = datetime.now().isoformat(timespec="seconds")
             for row in dom_candidates:
                 row["data_from_page"] = current_page
+                row["data_retreive_at"] = ui_retrieve_at
+                row["data_retrieve_approch"] = "navigate_ui"
             result["companies"].extend(dom_candidates)
             if csv_stream_writer and dom_candidates:
                 csv_stream_writer.append_rows(dom_candidates, source_label=f"ui_page_{current_page}")
@@ -3338,9 +3348,12 @@ def scrape_company_list(
                     probe_page_no = max(1, int(effective_body.get("currentPage") or 1))
                 except Exception:
                     probe_page_no = 1
+            probe_retrieve_at = datetime.now().isoformat(timespec="seconds")
             for row in (result.get("infos_replay", {}).get("extracted_companies") or []):
                 row["source_page"] = probe_page_no
                 row["data_from_page"] = probe_page_no
+                row["data_retreive_at"] = probe_retrieve_at
+                row["data_retrieve_approch"] = "api_replay"
             if csv_stream_writer and result.get("infos_replay", {}).get("extracted_companies"):
                 csv_stream_writer.append_rows(
                     result["infos_replay"]["extracted_companies"],

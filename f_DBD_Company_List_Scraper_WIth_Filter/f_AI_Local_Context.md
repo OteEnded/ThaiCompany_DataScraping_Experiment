@@ -584,19 +584,26 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
 - Temporary page-3 proof artifacts are disposable and were cleaned after documentation sync.
 - Process remains idle and ready for next validation window.
 
-## Latest Update (2026-04-06, data_from_page Lineage Field)
+## Latest Update (2026-04-06, Row Lineage and Capture Metadata Fields)
 
 ### Feature Added
 - Added new result column: `data_from_page`.
+- Added new result column: `data_retreive_at`.
+- Added new result column: `data_retrieve_approch`.
 - Goal: preserve page-of-origin lineage for every exported row.
 
 ### Mapping Rules Implemented
 - UI extracted rows: `data_from_page = current UI page`.
+- UI extracted rows: `data_retreive_at = capture timestamp`.
+- UI extracted rows: `data_retrieve_approch = navigate_ui`.
 - API replay rows: `data_from_page = replay currentPage`.
+- API replay rows: `data_retreive_at = replay capture timestamp`.
+- API replay rows: `data_retrieve_approch = api_replay`.
 - Replay probe rows: `data_from_page = probe page` (typically page 1).
+- Replay probe rows: `data_retrieve_approch = api_replay`.
 
 ### Output Impact
-- `result_packed.csv` includes `data_from_page` in packed column schema.
+- `result_packed.csv` includes `data_from_page`, `data_retreive_at`, and `data_retrieve_approch` in packed column schema.
 - JSON row objects now carry the same page lineage key.
 
 ### Validation Status

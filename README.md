@@ -145,6 +145,8 @@ Process `f` recent hardening (2026-04-06):
   - `status=ok`, `page1_rows=10`, `target_rows=10`, `target_success=true`.
 - New output lineage field:
   - `data_from_page` added to process-`f` JSON/CSV rows to track page-of-origin.
+  - `data_retreive_at` added to process-`f` rows for capture-time sorting.
+  - `data_retrieve_approch` added to process-`f` rows with values: `api_replay` or `navigate_ui`.
   - wiring confirmed for UI rows, API replay rows, and probe rows.
   - full uninterrupted live 3-page proof artifact still pending stable run window.
 - Dedicated proof runner exists for strict no-filter validation:

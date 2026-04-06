@@ -104,13 +104,20 @@ Note:
 
 ## Output lineage column (2026-04-06)
 - New output field: `data_from_page`
+- New output field: `data_retreive_at`
+- New output field: `data_retrieve_approch`
 - Purpose: track which result page each row came from.
 - Population rules:
   - UI rows: `data_from_page = current UI page`
+  - UI rows: `data_retreive_at = capture timestamp (ISO datetime)`
+  - UI rows: `data_retrieve_approch = navigate_ui`
   - API replay rows: `data_from_page = replay currentPage`
+  - API replay rows: `data_retreive_at = replay capture timestamp (ISO datetime)`
+  - API replay rows: `data_retrieve_approch = api_replay`
   - Replay probe rows: `data_from_page = probe page` (typically page 1)
+  - Replay probe rows: `data_retrieve_approch = api_replay`
 - CSV impact:
-  - `result_packed.csv` now includes `data_from_page` as a packed column.
+  - `result_packed.csv` now includes `data_from_page`, `data_retreive_at`, and `data_retrieve_approch` as packed columns.
 
 ## UI page-nav behavior (2026-04-06 validation)
 - Primary navigation path uses paginator input + Enter to move to target page.
