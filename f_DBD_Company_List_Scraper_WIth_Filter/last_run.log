@@ -1,0 +1,204 @@
+[2026-04-03 16:21:30][run:162130-pid13576] Loaded config from: c:\data\AI_Search\f_DBD_Company_List_Scraper_WIth_Filter\f_local_config.test18.json
+[2026-04-03 16:21:30][run:162130-pid13576] Initialized incremental CSV stream: result_packed.csv
+[2026-04-03 16:21:30][run:162130-pid13576] Run started. query='บริษัท', pages=18, headless=False, channel=chromium, timeout=180s
+[2026-04-03 16:21:30][run:162130-pid13576] Fetch-all safety max pages: 18
+[2026-04-03 16:21:30][run:162130-pid13576] Search strategy: direct_url_first=True, storage_state=enabled
+[2026-04-03 16:21:30][run:162130-pid13576] Active filters: {"province_codes": [], "status_codes": ["ยังดำเนินกิจการอยู่"], "juristic_type_codes": ["บริษัทมหาชนจำกัด", "บริษัทจำกัด"], "business_size_codes": [], "capital_min": 5000000, "capital_max": 100000000000, "revenue_min": 100000000, "revenue_max": null, "net_profit_min": 10000000, "net_profit_max": null, "assets_min": null, "assets_max": null}
+[2026-04-03 16:21:30][run:162130-pid13576] Browser ready. Opening landing page...
+[2026-04-03 16:21:55][run:162130-pid13576] Landing page ready, overlays handled.
+[2026-04-03 16:21:55][run:162130-pid13576] Trying direct search URL: https://datawarehouse.dbd.go.th/juristic/searchInfo?keyword=%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%A9%E0%B8%B1%E0%B8%97
+[2026-04-03 16:21:57][run:162130-pid13576] Direct URL search loaded successfully.
+[2026-04-03 16:21:57][run:162130-pid13576] Direct probe: dom_candidates=0, infos_contract_captured=False
+[2026-04-03 16:21:57][run:162130-pid13576] Direct URL load succeeded; skipping search-box keyword re-entry by design.
+[2026-04-03 16:21:57][run:162130-pid13576] Applying advanced filters via UI... attempt 1/4
+[2026-04-03 16:21:57][run:162130-pid13576] Waiting for advanced-filter toggle to become ready...
+[2026-04-03 16:21:57][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:05][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:12][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:19][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:25][run:162130-pid13576] Captured waiting page snapshot for 'filter_toggle_not_ready' -> last_page_on.png
+[2026-04-03 16:22:25][run:162130-pid13576] Advanced filter apply attempt 1/4 failed: Filter panel toggle not ready within 45000 ms
+[2026-04-03 16:22:25][run:162130-pid13576] Captured waiting page snapshot for 'filter_apply_failed_attempt_1' -> last_page_on.png
+[2026-04-03 16:22:25][run:162130-pid13576] Filter loading appears stuck. Refreshing page and retrying (2/4)...
+[2026-04-03 16:22:27][run:162130-pid13576] Applying advanced filters via UI... attempt 2/4
+[2026-04-03 16:22:27][run:162130-pid13576] Waiting for advanced-filter toggle to become ready...
+[2026-04-03 16:22:27][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:34][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:42][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:49][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:22:55][run:162130-pid13576] Captured waiting page snapshot for 'filter_toggle_not_ready' -> last_page_on.png
+[2026-04-03 16:22:55][run:162130-pid13576] Advanced filter apply attempt 2/4 failed: Filter panel toggle not ready within 45000 ms
+[2026-04-03 16:22:56][run:162130-pid13576] Captured waiting page snapshot for 'filter_apply_failed_attempt_2' -> last_page_on.png
+[2026-04-03 16:22:56][run:162130-pid13576] Filter loading appears stuck. Refreshing page and retrying (3/4)...
+[2026-04-03 16:23:00][run:162130-pid13576] Applying advanced filters via UI... attempt 3/4
+[2026-04-03 16:23:00][run:162130-pid13576] Waiting for advanced-filter toggle to become ready...
+[2026-04-03 16:23:00][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:23:08][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:23:15][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:23:23][run:162130-pid13576] Captured waiting page snapshot for 'waiting_filter_toggle_ready' -> last_page_on.png
+[2026-04-03 16:23:28][run:162130-pid13576] Captured waiting page snapshot for 'filter_toggle_not_ready' -> last_page_on.png
+[2026-04-03 16:23:28][run:162130-pid13576] Advanced filter apply attempt 3/4 failed: Filter panel toggle not ready within 45000 ms
+[2026-04-03 16:23:29][run:162130-pid13576] Captured waiting page snapshot for 'filter_apply_failed_attempt_3' -> last_page_on.png
+[2026-04-03 16:23:29][run:162130-pid13576] Filter loading appears stuck. Refreshing page and retrying (4/4)...
+[2026-04-03 16:23:30][run:162130-pid13576] Applying advanced filters via UI... attempt 4/4
+[2026-04-03 16:23:30][run:162130-pid13576] Waiting for advanced-filter toggle to become ready...
+[2026-04-03 16:23:37][run:162130-pid13576] Wait timeout for open_filter_panel_post_click after 5000 ms: Page.wait_for_function: Timeout 5000ms exceeded.
+[2026-04-03 16:23:38][run:162130-pid13576] Captured waiting page snapshot for 'open_filter_panel_post_click_timeout' -> last_page_on.png
+[2026-04-03 16:23:46][run:162130-pid13576] Advanced filters recovered after refresh cycle 3.
+[2026-04-03 16:23:46][run:162130-pid13576] Advanced filters applied successfully.
+[2026-04-03 16:23:46][run:162130-pid13576] Sort applied: 'ชื่อนิติบุคคล (ก-ฮ)' -> 'จังหวัด (ก-ฮ)' (value=pvDesc)
+[2026-04-03 16:23:47][run:162130-pid13576] CSV stream append [ui_page_1]: appended=10, skipped=0, total_unique=10
+[2026-04-03 16:23:47][run:162130-pid13576] UI page 1 captured: rows=10, accumulated_ui_rows=10
+[2026-04-03 16:23:47][run:162130-pid13576] Replay payload sortBy: requested=pvDesc, actual_api=jpName (pvDesc pagination workaround)
+[2026-04-03 16:25:47][run:162130-pid13576] API request replay_probe method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos
+[2026-04-03 16:25:47][run:162130-pid13576] Replay probe done: status=-2 extracted=0
+[2026-04-03 16:25:47][run:162130-pid13576] API replay pagination started. target=18, resolved_last_page=18, page_size=10
+[2026-04-03 16:25:47][run:162130-pid13576] API replay fetching 2/18 ..
+[2026-04-03 16:25:47][run:162130-pid13576] API request page_fetch page=2 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=2
+[2026-04-03 16:25:47][run:162130-pid13576] API request page_fetch_result page=2 attempt=1 status=200 ok=True rows=10 elapsed=0.04s error=
+[2026-04-03 16:25:47][run:162130-pid13576] CSV stream append [api_page_2]: appended=10, skipped=0, total_unique=20
+[2026-04-03 16:25:47][run:162130-pid13576] API replay done 2/18: status=200 rows=10 attempts=1
+[2026-04-03 16:25:47][run:162130-pid13576] API replay timing page=0.05s avg_page=0.05s elapsed=00:00 eta=00:01
+[2026-04-03 16:25:49][run:162130-pid13576] API replay fetching 3/18 ..
+[2026-04-03 16:25:49][run:162130-pid13576] API request page_fetch page=3 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=3
+[2026-04-03 16:25:49][run:162130-pid13576] API request page_fetch_result page=3 attempt=1 status=200 ok=True rows=10 elapsed=0.06s error=
+[2026-04-03 16:25:49][run:162130-pid13576] CSV stream append [api_page_3]: appended=10, skipped=0, total_unique=30
+[2026-04-03 16:25:49][run:162130-pid13576] API replay done 3/18: status=200 rows=10 attempts=1
+[2026-04-03 16:25:49][run:162130-pid13576] API replay timing page=0.06s avg_page=0.05s elapsed=00:02 eta=00:01
+[2026-04-03 16:25:49][run:162130-pid13576] API replay fetching 4/18 ..
+[2026-04-03 16:25:49][run:162130-pid13576] API request page_fetch page=4 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=4
+[2026-04-03 16:25:53][run:162130-pid13576] API request page_fetch_result page=4 attempt=1 status=200 ok=True rows=10 elapsed=3.20s error=
+[2026-04-03 16:25:53][run:162130-pid13576] CSV stream append [api_page_4]: appended=10, skipped=0, total_unique=40
+[2026-04-03 16:25:53][run:162130-pid13576] API replay done 4/18: status=200 rows=10 attempts=1
+[2026-04-03 16:25:53][run:162130-pid13576] API replay timing page=3.20s avg_page=1.10s elapsed=00:06 eta=00:15
+[2026-04-03 16:25:54][run:162130-pid13576] API replay fetching 5/18 ..
+[2026-04-03 16:25:54][run:162130-pid13576] API request page_fetch page=5 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=5
+[2026-04-03 16:25:59][run:162130-pid13576] API request page_fetch_result page=5 attempt=1 status=500 ok=False rows=0 elapsed=5.09s error=
+[2026-04-03 16:25:59][run:162130-pid13576] API request page_fetch_retry page=5 next_attempt=2 reason=status_500_and_rows_0
+[2026-04-03 16:26:01][run:162130-pid13576] API request page_fetch page=5 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=5
+[2026-04-03 16:26:04][run:162130-pid13576] API request page_fetch_result page=5 attempt=2 status=200 ok=True rows=10 elapsed=3.55s error=
+[2026-04-03 16:26:04][run:162130-pid13576] CSV stream append [api_page_5]: appended=10, skipped=0, total_unique=50
+[2026-04-03 16:26:04][run:162130-pid13576] API replay done 5/18: status=200 rows=10 attempts=2
+[2026-04-03 16:26:04][run:162130-pid13576] API replay timing page=10.24s avg_page=3.39s elapsed=00:17 eta=00:44
+[2026-04-03 16:26:05][run:162130-pid13576] API replay fetching 6/18 ..
+[2026-04-03 16:26:05][run:162130-pid13576] API request page_fetch page=6 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=6
+[2026-04-03 16:26:08][run:162130-pid13576] API request page_fetch_result page=6 attempt=1 status=200 ok=True rows=10 elapsed=2.98s error=
+[2026-04-03 16:26:08][run:162130-pid13576] CSV stream append [api_page_6]: appended=10, skipped=0, total_unique=60
+[2026-04-03 16:26:08][run:162130-pid13576] API replay done 6/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:08][run:162130-pid13576] API replay timing page=2.98s avg_page=3.31s elapsed=00:21 eta=00:40
+[2026-04-03 16:26:09][run:162130-pid13576] API replay fetching 7/18 ..
+[2026-04-03 16:26:09][run:162130-pid13576] API request page_fetch page=7 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=7
+[2026-04-03 16:26:13][run:162130-pid13576] API request page_fetch_result page=7 attempt=1 status=200 ok=True rows=10 elapsed=3.21s error=
+[2026-04-03 16:26:13][run:162130-pid13576] CSV stream append [api_page_7]: appended=10, skipped=0, total_unique=70
+[2026-04-03 16:26:13][run:162130-pid13576] API replay done 7/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:13][run:162130-pid13576] API replay timing page=3.21s avg_page=3.29s elapsed=00:26 eta=00:36
+[2026-04-03 16:26:14][run:162130-pid13576] API replay fetching 8/18 ..
+[2026-04-03 16:26:14][run:162130-pid13576] API request page_fetch page=8 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=8
+[2026-04-03 16:26:17][run:162130-pid13576] API request page_fetch_result page=8 attempt=1 status=200 ok=True rows=10 elapsed=3.07s error=
+[2026-04-03 16:26:17][run:162130-pid13576] CSV stream append [api_page_8]: appended=10, skipped=0, total_unique=80
+[2026-04-03 16:26:17][run:162130-pid13576] API replay done 8/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:17][run:162130-pid13576] API replay timing page=3.07s avg_page=3.26s elapsed=00:30 eta=00:33
+[2026-04-03 16:26:18][run:162130-pid13576] API replay fetching 9/18 ..
+[2026-04-03 16:26:18][run:162130-pid13576] API request page_fetch page=9 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=9
+[2026-04-03 16:26:23][run:162130-pid13576] API request page_fetch_result page=9 attempt=1 status=500 ok=False rows=0 elapsed=5.11s error=
+[2026-04-03 16:26:23][run:162130-pid13576] API request page_fetch_retry page=9 next_attempt=2 reason=status_500_and_rows_0
+[2026-04-03 16:26:25][run:162130-pid13576] API request page_fetch page=9 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=9
+[2026-04-03 16:26:28][run:162130-pid13576] API request page_fetch_result page=9 attempt=2 status=200 ok=True rows=10 elapsed=3.05s error=
+[2026-04-03 16:26:28][run:162130-pid13576] CSV stream append [api_page_9]: appended=10, skipped=0, total_unique=90
+[2026-04-03 16:26:28][run:162130-pid13576] API replay done 9/18: status=200 rows=10 attempts=2
+[2026-04-03 16:26:28][run:162130-pid13576] API replay timing page=9.77s avg_page=4.07s elapsed=00:41 eta=00:37
+[2026-04-03 16:26:29][run:162130-pid13576] API replay fetching 10/18 ..
+[2026-04-03 16:26:29][run:162130-pid13576] API request page_fetch page=10 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=10
+[2026-04-03 16:26:34][run:162130-pid13576] API request page_fetch_result page=10 attempt=1 status=200 ok=True rows=10 elapsed=4.67s error=
+[2026-04-03 16:26:34][run:162130-pid13576] CSV stream append [api_page_10]: appended=10, skipped=0, total_unique=100
+[2026-04-03 16:26:34][run:162130-pid13576] API replay done 10/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:34][run:162130-pid13576] API replay timing page=4.68s avg_page=4.14s elapsed=00:46 eta=00:33
+[2026-04-03 16:26:35][run:162130-pid13576] API replay fetching 11/18 ..
+[2026-04-03 16:26:35][run:162130-pid13576] API request page_fetch page=11 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=11
+[2026-04-03 16:26:40][run:162130-pid13576] API request page_fetch_result page=11 attempt=1 status=500 ok=False rows=0 elapsed=5.11s error=
+[2026-04-03 16:26:40][run:162130-pid13576] API request page_fetch_retry page=11 next_attempt=2 reason=status_500_and_rows_0
+[2026-04-03 16:26:41][run:162130-pid13576] API request page_fetch page=11 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=11
+[2026-04-03 16:26:45][run:162130-pid13576] API request page_fetch_result page=11 attempt=2 status=200 ok=True rows=10 elapsed=4.01s error=
+[2026-04-03 16:26:45][run:162130-pid13576] CSV stream append [api_page_11]: appended=10, skipped=0, total_unique=110
+[2026-04-03 16:26:45][run:162130-pid13576] API replay done 11/18: status=200 rows=10 attempts=2
+[2026-04-03 16:26:45][run:162130-pid13576] API replay timing page=10.72s avg_page=4.80s elapsed=00:58 eta=00:34
+[2026-04-03 16:26:47][run:162130-pid13576] API replay fetching 12/18 ..
+[2026-04-03 16:26:47][run:162130-pid13576] API request page_fetch page=12 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=12
+[2026-04-03 16:26:51][run:162130-pid13576] API request page_fetch_result page=12 attempt=1 status=200 ok=True rows=10 elapsed=4.25s error=
+[2026-04-03 16:26:51][run:162130-pid13576] CSV stream append [api_page_12]: appended=10, skipped=0, total_unique=120
+[2026-04-03 16:26:51][run:162130-pid13576] API replay done 12/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:51][run:162130-pid13576] API replay timing page=4.25s avg_page=4.75s elapsed=01:04 eta=00:28
+[2026-04-03 16:26:52][run:162130-pid13576] API replay fetching 13/18 ..
+[2026-04-03 16:26:52][run:162130-pid13576] API request page_fetch page=13 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=13
+[2026-04-03 16:26:55][run:162130-pid13576] API request page_fetch_result page=13 attempt=1 status=200 ok=True rows=10 elapsed=3.47s error=
+[2026-04-03 16:26:55][run:162130-pid13576] CSV stream append [api_page_13]: appended=10, skipped=0, total_unique=130
+[2026-04-03 16:26:55][run:162130-pid13576] API replay done 13/18: status=200 rows=10 attempts=1
+[2026-04-03 16:26:55][run:162130-pid13576] API replay timing page=3.47s avg_page=4.64s elapsed=01:08 eta=00:23
+[2026-04-03 16:26:57][run:162130-pid13576] API replay fetching 14/18 ..
+[2026-04-03 16:26:57][run:162130-pid13576] API request page_fetch page=14 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=14
+[2026-04-03 16:27:01][run:162130-pid13576] API request page_fetch_result page=14 attempt=1 status=200 ok=True rows=10 elapsed=4.17s error=
+[2026-04-03 16:27:01][run:162130-pid13576] CSV stream append [api_page_14]: appended=10, skipped=0, total_unique=140
+[2026-04-03 16:27:01][run:162130-pid13576] API replay done 14/18: status=200 rows=10 attempts=1
+[2026-04-03 16:27:01][run:162130-pid13576] API replay timing page=4.17s avg_page=4.61s elapsed=01:14 eta=00:18
+[2026-04-03 16:27:02][run:162130-pid13576] API replay fetching 15/18 ..
+[2026-04-03 16:27:02][run:162130-pid13576] API request page_fetch page=15 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=15
+[2026-04-03 16:27:03][run:162130-pid13576] API request page_fetch_result page=15 attempt=1 status=502 ok=False rows=0 elapsed=0.93s error=
+[2026-04-03 16:27:03][run:162130-pid13576] API request page_fetch_retry page=15 next_attempt=2 reason=status_502_and_rows_0
+[2026-04-03 16:27:05][run:162130-pid13576] API request page_fetch page=15 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=15
+[2026-04-03 16:27:12][run:162130-pid13576] API request page_fetch_result page=15 attempt=2 status=200 ok=True rows=10 elapsed=7.14s error=
+[2026-04-03 16:27:12][run:162130-pid13576] CSV stream append [api_page_15]: appended=10, skipped=0, total_unique=150
+[2026-04-03 16:27:12][run:162130-pid13576] API replay done 15/18: status=200 rows=10 attempts=2
+[2026-04-03 16:27:12][run:162130-pid13576] API replay timing page=9.68s avg_page=4.97s elapsed=01:25 eta=00:15
+[2026-04-03 16:27:13][run:162130-pid13576] API replay fetching 16/18 ..
+[2026-04-03 16:27:13][run:162130-pid13576] API request page_fetch page=16 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=16
+[2026-04-03 16:27:20][run:162130-pid13576] API request page_fetch_result page=16 attempt=1 status=500 ok=False rows=0 elapsed=7.13s error=
+[2026-04-03 16:27:20][run:162130-pid13576] API request page_fetch_retry page=16 next_attempt=2 reason=status_500_and_rows_0
+[2026-04-03 16:27:22][run:162130-pid13576] API request page_fetch page=16 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=16
+[2026-04-03 16:27:25][run:162130-pid13576] API request page_fetch_result page=16 attempt=2 status=200 ok=True rows=10 elapsed=3.26s error=
+[2026-04-03 16:27:25][run:162130-pid13576] CSV stream append [api_page_16]: appended=10, skipped=0, total_unique=160
+[2026-04-03 16:27:25][run:162130-pid13576] API replay done 16/18: status=200 rows=10 attempts=2
+[2026-04-03 16:27:25][run:162130-pid13576] API replay timing page=11.99s avg_page=5.44s elapsed=01:38 eta=00:11
+[2026-04-03 16:27:26][run:162130-pid13576] API replay fetching 17/18 ..
+[2026-04-03 16:27:26][run:162130-pid13576] API request page_fetch page=17 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=17
+[2026-04-03 16:27:29][run:162130-pid13576] API request page_fetch_result page=17 attempt=1 status=200 ok=True rows=10 elapsed=3.40s error=
+[2026-04-03 16:27:29][run:162130-pid13576] CSV stream append [api_page_17]: appended=10, skipped=0, total_unique=170
+[2026-04-03 16:27:29][run:162130-pid13576] API replay done 17/18: status=200 rows=10 attempts=1
+[2026-04-03 16:27:29][run:162130-pid13576] API replay timing page=3.40s avg_page=5.31s elapsed=01:42 eta=00:05
+[2026-04-03 16:27:31][run:162130-pid13576] API replay fetching 18/18 ..
+[2026-04-03 16:27:31][run:162130-pid13576] API request page_fetch page=18 attempt=1 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=18
+[2026-04-03 16:27:36][run:162130-pid13576] API request page_fetch_result page=18 attempt=1 status=500 ok=False rows=0 elapsed=5.09s error=
+[2026-04-03 16:27:36][run:162130-pid13576] API request page_fetch_retry page=18 next_attempt=2 reason=status_500_and_rows_0
+[2026-04-03 16:27:37][run:162130-pid13576] API request page_fetch page=18 attempt=2 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=18
+[2026-04-03 16:29:37][run:162130-pid13576] API request page_fetch_result page=18 attempt=2 status=-2 ok=False rows=0 elapsed=120.01s error=request_timeout_120000ms
+[2026-04-03 16:29:37][run:162130-pid13576] API request timeout page=18 attempt=2 timeout=120s; retrying
+[2026-04-03 16:29:37][run:162130-pid13576] API request page_fetch_timeout page=18 attempt=2 elapsed=120.01s threshold=120s
+[2026-04-03 16:29:37][run:162130-pid13576] API page 18 attempt 2 failed/slow; triggering UI probe fallback
+[2026-04-03 16:29:37][run:162130-pid13576] UI probe fallback: navigate current_page=1 -> target_page=18
+[2026-04-03 16:29:37][run:162130-pid13576] UI probe fallback: trying generic Thai paginator input jump
+[2026-04-03 16:29:38][run:162130-pid13576] UI probe fallback: trying paginator input jump via 'ul.nav.pager input.form-control.numeric'
+[2026-04-03 16:29:40][run:162130-pid13576] UI probe fallback: clicked local paginator arrow after input
+[2026-04-03 16:29:55][run:162130-pid13576] UI probe fallback: Playwright paginator input jump did not reach target page
+[2026-04-03 16:29:55][run:162130-pid13576] UI probe fallback: trying paginator input jump via '.nav.pager input.form-control.numeric'
+[2026-04-03 16:29:55][run:162130-pid13576] UI probe fallback: clicked local paginator arrow after input
+[2026-04-03 16:30:10][run:162130-pid13576] UI probe fallback: Playwright paginator input jump did not reach target page
+[2026-04-03 16:30:10][run:162130-pid13576] UI probe fallback: clicked rightmost paginator control (hop 1)
+[2026-04-03 16:30:25][run:162130-pid13576] UI probe fallback: rightmost control click did not advance page within timeout
+[2026-04-03 16:30:26][run:162130-pid13576] UI probe fallback: current page number could not be detected after click; stopping further hops
+[2026-04-03 16:30:26][run:162130-pid13576] UI probe fallback failed to reach target page 18; ended at page 1
+[2026-04-03 16:30:26][run:162130-pid13576] UI probe fallback result page=18 attempt=2 status=-2 elapsed=120.01s rows=0
+[2026-04-03 16:30:26][run:162130-pid13576] API request page_fetch_retry page=18 next_attempt=3 reason=status_-2_and_rows_0
+[2026-04-03 16:30:28][run:162130-pid13576] API request page_fetch page=18 attempt=3 method=POST endpoint=https://datawarehouse.dbd.go.th/api/v1/company-profiles/infos body.currentPage=18
+[2026-04-03 16:30:32][run:162130-pid13576] API request page_fetch_result page=18 attempt=3 status=200 ok=True rows=10 elapsed=3.53s error=
+[2026-04-03 16:30:32][run:162130-pid13576] CSV stream append [api_page_18]: appended=10, skipped=0, total_unique=180
+[2026-04-03 16:30:32][run:162130-pid13576] API replay done 18/18: status=200 rows=10 attempts=3
+[2026-04-03 16:30:32][run:162130-pid13576] API replay timing page=180.98s avg_page=15.64s elapsed=04:45 eta=00:00
+[2026-04-03 16:30:33][run:162130-pid13576] Filtered list total pages: 18
+[2026-04-03 16:30:33][run:162130-pid13576] Replay pagination finished: pages=17, added_rows=170
+[2026-04-03 16:30:33][run:162130-pid13576] Post-process complete: unique_companies=180, status=ok
+[2026-04-03 16:30:33][run:162130-pid13576] API hit summary: total_hits=42, unique_urls=4
+[2026-04-03 16:30:33][run:162130-pid13576] Saved outputs: f_search_result.json, result_packed.csv (csv was streamed during fetch)
+[2026-04-03 16:30:33][run:162130-pid13576] Run summary: companies=180, pages_visited_ui=1
+[2026-04-03 16:30:33][run:162130-pid13576] Timing summary: overall=09:03 (543.31s), replay_pages=17, avg_page=15.64s, min_page=0.05s, max_page=180.98s
+[2026-04-03 16:30:33][run:162130-pid13576] Captured infos contract: yes
+[2026-04-03 16:30:33][run:162130-pid13576] Infos replay extracted: 0
+[2026-04-03 16:30:33][run:162130-pid13576] API replay rows added from next pages: 170

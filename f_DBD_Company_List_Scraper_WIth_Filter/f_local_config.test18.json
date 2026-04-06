@@ -1,0 +1,34 @@
+{
+    "search_term": "บริษัท",
+    "query": "บริษัท",
+    "sort_label": "จังหวัด (ก-ฮ)",
+    "prefer_direct_search_url": true,
+    "pages": 18,
+    "headless": false,
+    "channel": "chromium",
+    "settle_seconds": 8,
+    "cdp_url": "",
+    "results_timeout_seconds": 180,
+    "fetch_all_max_pages": 18,
+    "storage_state": "storage_state.json",
+    "use_storage_state": true,
+    "filters": {
+        "province_codes": [],
+        "status_codes": [
+            "ยังดำเนินกิจการอยู่"
+        ],
+        "juristic_type_codes": [
+            "บริษัทมหาชนจำกัด",
+            "บริษัทจำกัด"
+        ],
+        "business_size_codes": [],
+        "capital_min": 5000000,
+        "capital_max": 100000000000,
+        "revenue_min": 100000000,
+        "revenue_max": null,
+        "net_profit_min": 10000000,
+        "net_profit_max": null,
+        "assets_min": null,
+        "assets_max": null
+    }
+}
