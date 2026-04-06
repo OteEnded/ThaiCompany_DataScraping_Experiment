@@ -20,6 +20,7 @@ from f_main import wait_for_table_data
 
 def wait_for_loaded_list_rows(page, timeout_ms: int, logger: RunLogger | None = None, label: str = "page") -> list[dict]:
     deadline = time.perf_counter() + max(1000, int(timeout_ms)) / 1000.0
+    retry_wait_ms = 1500
     poll = 0
     while time.perf_counter() < deadline:
         poll += 1
@@ -40,7 +41,7 @@ def wait_for_loaded_list_rows(page, timeout_ms: int, logger: RunLogger | None = 
 
         if logger and poll % 2 == 0:
             logger.log(f"{label}: still waiting for loaded rows poll={poll}")
-        page.wait_for_timeout(700)
+        page.wait_for_timeout(retry_wait_ms)
 
     if logger:
         logger.log(f"{label}: loaded rows not confirmed within {timeout_ms} ms")

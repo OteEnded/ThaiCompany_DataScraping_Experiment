@@ -1584,6 +1584,7 @@ def ui_probe_navigate_to_page(
 
     def wait_target_page_rows(expected_page: int, wait_ms: int) -> list[dict]:
         deadline = time.perf_counter() + max(1000, int(wait_ms)) / 1000.0
+        retry_wait_ms = 1500
         poll_round = 0
         rescue_count = 0
         while time.perf_counter() < deadline:
@@ -1598,7 +1599,7 @@ def ui_probe_navigate_to_page(
                             logger.log(
                                 f"UI probe fallback: page mismatch detected after nav expected={expected_page} inferred_from_rows={inferred}; waiting/retrying"
                             )
-                        page.wait_for_timeout(700)
+                        page.wait_for_timeout(retry_wait_ms)
                         continue
                     if logger:
                         logger.log(
@@ -1629,7 +1630,7 @@ def ui_probe_navigate_to_page(
 
             if poll_round % 4 == 0:
                 capture_ui_nav_page(page, f"ui_probe_wait_rows_{expected_page}", logger=logger)
-            page.wait_for_timeout(700)
+            page.wait_for_timeout(retry_wait_ms)
 
         if logger:
             logger.log(
@@ -2086,7 +2087,14 @@ def ui_probe_navigate_to_page(
                         wait_reason=f"ui_probe_next_to_{target_page}",
                     )
                     page.wait_for_timeout(1000)
-                    moved = True
+                    post_page = get_ui_current_page_number(page) or get_row_inferred_page()
+                    if post_page and post_page > prev_page:
+                        moved = True
+                    else:
+                        if logger:
+                            logger.log(
+                                f"UI probe fallback: next selector click produced no page advance (prev={prev_page}, now={post_page})"
+                            )
                     break
             except Exception:
                 continue
@@ -2177,7 +2185,14 @@ def ui_probe_navigate_to_page(
                         wait_reason=f"ui_probe_rightmost_to_{target_page}",
                     )
                     page.wait_for_timeout(1000)
-                    moved = True
+                    post_page = get_ui_current_page_number(page) or get_row_inferred_page()
+                    if post_page and post_page > prev_page:
+                        moved = True
+                    else:
+                        if logger:
+                            logger.log(
+                                f"UI probe fallback: rightmost click produced no page advance (prev={prev_page}, now={post_page})"
+                            )
             except Exception:
                 pass
 

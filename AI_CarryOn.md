@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-04-03 (process f 18-page validation + stuck-load refresh recovery + province-sort probing/docs sync). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-04-06 (process f UI-probe wait tuning, cleanup pass, and docs sync). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -228,16 +228,21 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `b5cdf13` — "OteEnded[feat]: harden process-f retries and sync docs/examples"
+- **Last commit:** `13b98c7` — "OteEnded[fix]: harden UI page confirmation and no-progress navigation"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Pending local changes (not committed yet):**
-- `f_DBD_Company_List_Scraper_WIth_Filter/_probe_sort_options.py` (local probe helper)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.test18.json` (temporary test config)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_search_result_crash.json` (debug crash artifact)
-- `f_DBD_Company_List_Scraper_WIth_Filter/last_page_on.png` (debug screenshot artifact)
-- `f_DBD_Company_List_Scraper_WIth_Filter/last_run.log` (runtime log artifact)
+- `README.md` (root docs sync)
+- `AI_CarryOn.md` (this context update)
+- `f_DBD_Company_List_Scraper_WIth_Filter/README.md` (process-f docs sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md` (latest runtime notes)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` (retry cadence tuning)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py` (retry cadence tuning)
 - `progress_report_for_meneger/` (untracked local folder)
+
+Notes:
+- Temporary proof artifacts were cleaned after latest verification cycle.
+- Process `f` is currently idle (no active test run) while DBD remains intermittently loading-only.
 
 **Gitignored files (do NOT commit):**
 - `config.json` (credentials)
@@ -254,35 +259,35 @@ Run examples committed in `result_examples/`.
 
 Priority order based on current state:
 
-1. **Optional sort auto-selection enhancement in f**
+1. **Re-run no-filter proof once DBD stabilizes**
+  Use `f_ui_probe_page5_test.py` and confirm strict gate: page-1 rows loaded before page-5 navigation.
+
+2. **Optional sort auto-selection enhancement in f**
   For province intent, auto-probe and choose stable API sort (`locationProvince.pvDesc` → `pvCode` → `jpName`) while preserving final province post-sort.
 
-2. **Run bounded full validation in f (`pages=-1`)**
+3. **Run bounded full validation in f (`pages=-1`)**
   Validate real filtered fetch-all behavior with `fetch_all_max_pages` cap and confirm output remains non-empty and constrained.
 
-3. **Add post-run filter assertions in f**
+4. **Add post-run filter assertions in f**
   Validate exported rows against active filter constraints (e.g., province/status/type) and flag mismatch runs.
 
-4. **Improve filter-panel stability in f**
+5. **Improve filter-panel stability in f**
   Continue hardening overlay-aware interactions and readiness checks for slow UI states (refresh-retry is now in place and validated).
 
-5. **c guard for blocked b output**
+6. **c guard for blocked b output**
   Add hard stop when `source_status != "ok"` before summary generation.
 
-6. **Test b with different juristic IDs**
+7. **Test b with different juristic IDs**
   Verify scraper generalization beyond OSOTSPA.
 
-7. **Add `e` results to `result_examples/`**
+8. **Add `e` results to `result_examples/`**
   Refresh examples for additional symbols.
 
-8. **Add `d` results to `result_examples/`**
+9. **Add `d` results to `result_examples/`**
   Refresh SDK examples (requires valid credentials).
 
-9. **Connect a + b pipelines**
+10. **Connect a + b pipelines**
   Optional orchestration layer from search results to DBD scrape.
-
-10. **Multiple juristic IDs in one b run**
-  Add batch mode while reusing warmed session state.
 
 ---
 
@@ -343,3 +348,6 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_L
 - 2026-04-03: Added process `f` stuck-loading filter recovery (refresh + retry envelope with bounded retries and explicit exhaustion logging).
 - 2026-04-03: Probed province-sort alternatives and confirmed `pvDesc` is duplicate-heavy; documented stable candidates (`locationProvince.pvDesc`, `pvCode`, `jpName`) and retained production-safe workaround.
 - 2026-04-03: Updated `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/` with latest validated run outputs (`f_search_result.json`, `result_packed.csv`).
+- 2026-04-06: Process `f` increased UI loaded-row retry wait from `700ms` to `1500ms` in both main runtime and dedicated no-filter proof runner.
+- 2026-04-06: Process `f` no-filter proof had one successful validation (page1 rows confirmed, page5 rows extracted), followed by intermittent infinite-loading recurrence.
+- 2026-04-06: Cleaned temporary process-`f` proof artifacts (`last_page_in.png`, `last_page_on.png`, `last_run.log`, `tmp_ui_probe_page5_test.log`, `tmp_ui_probe_page5_result.json`) and synced docs/context files.

@@ -258,6 +258,34 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
 - `replay_infos_pages()` (line ~2120): Added filter validation check before replay
 - Post-sort logic (line ~2200): Enforces sort by `(province, juristic_id)` when pvDesc requested
 - Log messaging (line ~2088): Shows both requested and actual API sort values
+
+## Latest Update (2026-04-06, UI-Probe Wait Tuning + Cleanup)
+
+### Runtime Tuning Applied
+- Increased retry wait interval in no-filter proof script:
+  - `f_ui_probe_page5_test.py`: page-1 loaded-row retry wait changed from `700ms` to `1500ms`.
+- Mirrored the same slower retry cadence in main runtime path:
+  - `f_main.py` (`wait_target_page_rows`): retry waits changed from `700ms` to `1500ms`.
+
+### Validation Outcome
+- A clean no-filter proof run succeeded after wait tuning:
+  - page-1 loaded rows confirmed (`10` rows), then UI jumped to page `5`, page-5 rows extracted (`10`).
+  - Result file showed `status=ok` with `page1_rows=10`, `page5_rows=10`.
+- Subsequent verification run encountered DBD infinite-loading behavior again (table readiness signals but no extractable loaded rows for extended period).
+- Long-running verification process was intentionally stopped to avoid unnecessary waiting.
+
+### Cleanup Completed
+- Removed generated test/debug artifacts from the latest proof cycles:
+  - `last_page_in.png`
+  - `last_page_on.png`
+  - `last_run.log`
+  - `tmp_ui_probe_page5_result.json`
+  - `tmp_ui_probe_page5_test.log`
+- Workspace is now clean of temporary proof artifacts; only source/doc files remain modified.
+
+### Current State
+- No active `f_ui_probe_page5_test.py` or `f_main.py` Python run remains.
+- Code is ready for re-run once DBD site exits infinite-loading state.
 - Early-stop guard: Unchanged (3 consecutive zero-new-row pages)
 
 ### Current Configuration
@@ -425,3 +453,32 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
 ### Temp Deployment Note
 - Keep this branch focused on runtime guard behavior and reproducible proof flow.
 - Treat transient loading-only failures as environment instability unless guard sequencing regresses.
+
+## Latest Update (2026-04-06, Web Down Pause + Resume Marker)
+
+### Current Status
+- Testing paused by user request while DBD site behavior is unstable/down.
+- No-filter proof flow was re-attempted to isolate pagination only:
+  - page-1 loaded-row gate remained active,
+  - repeated `Table data ready` events did not guarantee real row availability,
+  - page transitions still intermittently stalled in loading-only states.
+
+### Important Clarification Captured
+- `Table data ready` currently means table/readiness checks passed, not guaranteed `dataRows > 0` on target page.
+- Navigation validation now depends on page-consistency checks (active page + row-index inference), not input value only.
+
+### Last Reliable Evidence Before Pause
+- Filtered forced-UI run captured contract and entered UI probe fallback.
+- UI probe attempted target-page movement and recommit, but target page remained loading-only (`loadingRows=1`, `dataRows=0`) through timeout windows.
+- No stable end-to-end proof yet of: page-1 loaded -> jump page-5 -> page-5 rows extracted.
+
+### Resume Checklist (on user signal)
+1. Use no-filter dedicated probe first:
+  - `python f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py --config f_local_config.ui_probe_nofilter_test.json`
+2. Confirm sequence strictly in log:
+  - page-1 `loaded rows confirmed`
+  - navigation attempt to page 5
+  - target-page rows extracted (`page5_rows > 0`)
+3. Save/result proof artifact:
+  - `tmp_ui_probe_page5_result.json`
+4. If still loading-only, keep run as environment-failure evidence and wait for next stable window.

@@ -132,6 +132,15 @@ Process `f` notable config controls:
 - `sort_label` (UI sort selection before capture/replay)
 - `pages = -1` with `fetch_all_max_pages` safety cap
 
+Process `f` recent hardening (2026-04-06):
+- UI row-confirmation retry waits were increased from `700ms` to `1500ms` in both:
+  - `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py`
+  - `f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py`
+- Dedicated proof runner exists for strict no-filter validation:
+  - `python f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py --config f_local_config.ui_probe_nofilter_test.json`
+- Temporary proof artifacts are intentionally disposable:
+  - `tmp_ui_probe_page5_test.log`, `tmp_ui_probe_page5_result.json`, `last_page_on.png`, `last_page_in.png`, `last_run.log`
+
 ## Result Examples (From Latest Run)
 
 To keep this README short, full examples are stored in `result_examples/`:

@@ -117,6 +117,11 @@ Log highlights:
 - Total pages hint and bounded replay target
 - Per-page duration and overall run duration summary
 
+Probe/test helper files used during UI fallback validation:
+- `f_ui_probe_page5_test.py`: dedicated no-filter proof runner with strict page-1-loaded gate before page-5 jump.
+- `tmp_ui_probe_page5_test.log`: temporary proof log (generated on demand).
+- `tmp_ui_probe_page5_result.json`: temporary proof result (generated on demand).
+
 ---
 
 ## Reverse-Engineered API Contract
@@ -200,6 +205,17 @@ Use `dumps/` files to inspect request/response flow and HTML snapshots.
 - Site performance and anti-bot behavior vary by session/time.
 - Some runs may not expose list API immediately.
 - Fetch-all mode (`pages = -1`) can still be long; always set a sensible `fetch_all_max_pages` cap.
+- DBD can enter an infinite-loading UI state where readiness signals appear but extractable data rows never materialize.
+- In that state, strict row-gated probes can legitimately return `partial`/blocked outcomes even when paginator text appears valid.
+
+### Latest Runtime Hardening (2026-04-06)
+- Slower retry cadence for UI row-confirmation loops:
+  - `f_main.py` and `f_ui_probe_page5_test.py` now wait `1500ms` between loaded-row retry polls (previously `700ms`).
+- Main benefit:
+  - Reduced overly-aggressive retry churn while waiting for real table rows during slow UI transitions.
+- Operational note:
+  - Keep using strict gate: do not navigate to target page until page-1 rows are truly extractable.
+  - If DBD remains loading-only for too long, stop the run and retry later rather than forcing navigation.
 
 ### Province Sort Caveat (Important)
 - UI label `จังหวัด (ก-ฮ)` maps to API `sortBy=pvDesc`.
