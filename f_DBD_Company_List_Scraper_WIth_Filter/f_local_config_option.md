@@ -102,6 +102,25 @@ Note:
 - `last_page_on.png`: latest page/UI wait screenshot for troubleshooting stale loading states.
 - `f_search_result.json.debug.timing`: per-page + overall timing summary.
 
+## Output lineage column (2026-04-06)
+- New output field: `data_from_page`
+- Purpose: track which result page each row came from.
+- Population rules:
+  - UI rows: `data_from_page = current UI page`
+  - API replay rows: `data_from_page = replay currentPage`
+  - Replay probe rows: `data_from_page = probe page` (typically page 1)
+- CSV impact:
+  - `result_packed.csv` now includes `data_from_page` as a packed column.
+
+## UI page-nav behavior (2026-04-06 validation)
+- Primary navigation path uses paginator input + Enter to move to target page.
+- Runtime no longer auto-clicks adjacent pager arrows after input Enter in UI probe/recommit paths.
+- Reason: when both `previous` and `next` controls are visible, heuristic arrow picks can hit `previous` and roll back page state.
+- Validation run (no-filter, target page 3) confirmed:
+  - page 1 rows loaded,
+  - input jump reached page 3,
+  - page 3 rows extracted (`target_rows=10`, `target_success=true`).
+
 ## Resume / Progress checkpoint behavior
 - Runtime still performs normal initialization first:
   - open URL, apply filters/sort, capture infos contract.

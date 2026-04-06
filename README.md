@@ -138,10 +138,19 @@ Process `f` recent hardening (2026-04-06):
 - UI row-confirmation retry waits were increased from `700ms` to `1500ms` in both:
   - `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py`
   - `f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py`
+- UI page-nav rollback hardening:
+  - removed ambiguous pager-arrow auto-click after input+Enter in UI probe/recommit paths,
+  - prevents accidental `next` vs `previous` mismatch when both controls are visible.
+- Focused proof run passed (`--target-page 3`):
+  - `status=ok`, `page1_rows=10`, `target_rows=10`, `target_success=true`.
+- New output lineage field:
+  - `data_from_page` added to process-`f` JSON/CSV rows to track page-of-origin.
+  - wiring confirmed for UI rows, API replay rows, and probe rows.
+  - full uninterrupted live 3-page proof artifact still pending stable run window.
 - Dedicated proof runner exists for strict no-filter validation:
   - `python f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py --config f_local_config.ui_probe_nofilter_test.json`
 - Temporary proof artifacts are intentionally disposable:
-  - `tmp_ui_probe_page5_test.log`, `tmp_ui_probe_page5_result.json`, `last_page_on.png`, `last_page_in.png`, `last_run.log`
+  - `tmp_ui_probe_page5_test.log`, `tmp_ui_probe_page5_result.json`, `tmp_ui_probe_page3_test.log`, `tmp_ui_probe_page3_result.json`, `last_page_on.png`, `last_page_in.png`, `last_run.log`
 
 ## Result Examples (From Latest Run)
 

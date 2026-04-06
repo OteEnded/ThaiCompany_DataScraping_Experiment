@@ -554,3 +554,54 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
 3. Save/result proof artifact:
   - `tmp_ui_probe_page5_result.json`
 4. If still loading-only, keep run as environment-failure evidence and wait for next stable window.
+
+## Latest Update (2026-04-06, Page-3 Rollback Fix Verified + Cleanup)
+
+### User Observation Addressed
+- Reported behavior: navigation briefly shows page `3` then returns to page `2`.
+- Probable cause: once both pager arrows are present (`previous` + `next`), heuristic arrow clicks can select the wrong control.
+
+### Code Fix Applied
+- Updated `f_main.py` UI probe/recommit logic to avoid heuristic arrow clicking after paginator input submit.
+- Input path now relies on:
+  - set target page in paginator input,
+  - send Enter,
+  - verify via multi-signal page detection + row-confirmation wait.
+
+### Focused Validation Run (Completed)
+- Command intent: no-filter probe, `--target-page 3`.
+- Result artifacts:
+  - `tmp_ui_probe_page3_result.json`
+  - `tmp_ui_probe_page3_test.log`
+- Verified outcome:
+  - `status=ok`
+  - `page1_rows=10`
+  - `target_rows=10`
+  - `target_success=true`
+- Logs show delayed-loading on target page was recovered through bounded recommit attempts, then rows materialized on page 3.
+
+### Cleanup State
+- Temporary page-3 proof artifacts are disposable and were cleaned after documentation sync.
+- Process remains idle and ready for next validation window.
+
+## Latest Update (2026-04-06, data_from_page Lineage Field)
+
+### Feature Added
+- Added new result column: `data_from_page`.
+- Goal: preserve page-of-origin lineage for every exported row.
+
+### Mapping Rules Implemented
+- UI extracted rows: `data_from_page = current UI page`.
+- API replay rows: `data_from_page = replay currentPage`.
+- Replay probe rows: `data_from_page = probe page` (typically page 1).
+
+### Output Impact
+- `result_packed.csv` includes `data_from_page` in packed column schema.
+- JSON row objects now carry the same page lineage key.
+
+### Validation Status
+- Code-path logic is implemented and consistent across UI/API/probe paths.
+- Live validation remains partially constrained by intermittent target-site instability (interrupted long Playwright runs).
+- Current state to carry forward:
+  - schema wiring confirmed,
+  - full uninterrupted 3-page proof artifact still pending stable run window.

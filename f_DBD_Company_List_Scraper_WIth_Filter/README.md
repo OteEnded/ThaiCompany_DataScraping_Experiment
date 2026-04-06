@@ -125,6 +125,8 @@ Probe/test helper files used during UI fallback validation:
 - `f_ui_probe_page5_test.py`: dedicated no-filter proof runner with strict page-1-loaded gate before page-5 jump.
 - `tmp_ui_probe_page5_test.log`: temporary proof log (generated on demand).
 - `tmp_ui_probe_page5_result.json`: temporary proof result (generated on demand).
+- `tmp_ui_probe_page3_test.log`: temporary focused target-page-3 proof log (generated on demand).
+- `tmp_ui_probe_page3_result.json`: temporary focused target-page-3 proof result (generated on demand).
 
 ---
 
@@ -220,6 +222,30 @@ Use `dumps/` files to inspect request/response flow and HTML snapshots.
 - Operational note:
   - Keep using strict gate: do not navigate to target page until page-1 rows are truly extractable.
   - If DBD remains loading-only for too long, stop the run and retry later rather than forcing navigation.
+
+### Latest Page-Nav Fix (2026-04-06)
+- Fixed rollback risk where page could move to target (for example page 3) and then snap back to page 2.
+- Root cause in prior logic: after paginator input + Enter, runtime could still click a local pager arrow heuristically.
+- Hardening applied in `f_main.py`:
+  - removed auto-arrow click from input-jump path,
+  - removed auto-arrow click from rescue recommit path,
+  - kept target-page verification via multi-signal page checks and row-confirmation waits.
+- Focused validation run (no-filter, `--target-page 3`) completed with:
+  - status `ok`,
+  - page-1 rows `10`,
+  - page-3 rows `10`,
+  - `target_success=true`.
+
+### Latest Output Lineage Update (2026-04-06)
+- Added per-row lineage field: `data_from_page`.
+- Field is populated for all row sources:
+  - UI extraction rows,
+  - API replay rows,
+  - replay-probe rows.
+- `result_packed.csv` now includes `data_from_page`.
+- Validation status:
+  - logic and schema wiring confirmed,
+  - uninterrupted live 3-page run evidence is still pending a stable execution window.
 
 ### Province Sort Caveat (Important)
 - UI label `จังหวัด (ก-ฮ)` maps to API `sortBy=pvDesc`.

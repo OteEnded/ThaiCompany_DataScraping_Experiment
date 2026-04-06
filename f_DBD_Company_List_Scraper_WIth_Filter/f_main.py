@@ -85,6 +85,7 @@ PACKED_COLUMNS = [
     "total_assets_baht",
     "shareholders_equity_baht",
     "profile_url",
+    "data_from_page",
 ]
 
 
@@ -1626,19 +1627,6 @@ def ui_probe_navigate_to_page(
                                 input.dispatchEvent(new Event('change', { bubbles: true }));
                                 input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
                                 input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-
-                                const controls = Array.from(root.querySelectorAll('button, a, [role="button"]')).filter(isVisible);
-                                const arrow = controls
-                                    .map((el) => {
-                                        const txt2 = (el.textContent || '').trim().toLowerCase();
-                                        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-                                        const score = (/next|ถัดไป|>|›|»/.test(txt2) || /next/.test(aria)) ? 10 : 0;
-                                        return { el, score };
-                                    })
-                                    .sort((a, b) => b.score - a.score)[0]?.el;
-                                if (arrow) {
-                                    arrow.click();
-                                }
                                 input.blur();
                                 return true;
                             }
@@ -1919,50 +1907,8 @@ def ui_probe_navigate_to_page(
             input_loc.click(timeout=4000)
             input_loc.fill(str(target_page), timeout=4000)
             input_loc.press("Enter", timeout=4000)
-
-            # If Enter doesn't trigger page change on this UI, click only a LOCAL arrow in the same paginator area.
-            try:
-                clicked_local_arrow = bool(
-                    input_loc.evaluate(
-                        """
-                        (input) => {
-                            const isVisible = (el) => {
-                                if (!el) return false;
-                                const style = window.getComputedStyle(el);
-                                if (style.visibility === 'hidden' || style.display === 'none') return false;
-                                const r = el.getBoundingClientRect();
-                                return r.width > 0 && r.height > 0;
-                            };
-
-                            let root = input.closest('ul.nav.pager, .nav.pager, .pagination, [class*="pager"]');
-                            if (!root) return false;
-
-                            const controls = Array.from(root.querySelectorAll('button, a, [role="button"]')).filter(isVisible);
-                            if (!controls.length) return false;
-                            const scored = controls
-                                .map((el) => {
-                                    const txt = (el.textContent || '').trim();
-                                    const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-                                    const hasNumber = /\d+/.test(txt);
-                                    const looksNext = /next|ถัดไป|›|»|>/.test(txt.toLowerCase()) || /next/.test(aria);
-                                    let score = 0;
-                                    if (looksNext) score += 100;
-                                    if (!hasNumber) score += 20;
-                                    return { el, score };
-                                })
-                                .sort((a, b) => b.score - a.score);
-                            const target = scored[0]?.el;
-                            if (!target) return false;
-                            target.click();
-                            return true;
-                        }
-                        """
-                    )
-                )
-                if clicked_local_arrow and logger:
-                    logger.log("UI probe fallback: clicked local paginator arrow after input")
-            except Exception:
-                pass
+            # Do not auto-click adjacent pager arrows after Enter.
+            # On this UI, once both Prev/Next arrows appear, heuristic arrow selection can choose Prev and roll back.
 
             try:
                 page.wait_for_function(
@@ -2577,6 +2523,7 @@ def replay_infos_pages(
 
         for row in rows:
             row["source_page"] = page_no
+            row["data_from_page"] = page_no
         all_rows.extend(rows)
         appended_rows = len(rows)
         if on_page_rows and rows:
@@ -3265,6 +3212,8 @@ def scrape_company_list(
             )
         for current_page in range(1, ui_page_limit + 1):
             dom_candidates = extract_company_candidates_from_dom(page)
+            for row in dom_candidates:
+                row["data_from_page"] = current_page
             result["companies"].extend(dom_candidates)
             if csv_stream_writer and dom_candidates:
                 csv_stream_writer.append_rows(dom_candidates, source_label=f"ui_page_{current_page}")
@@ -3383,6 +3332,15 @@ def scrape_company_list(
                 logger.log(
                     f"Replay probe done: status={result['infos_replay'].get('status')} extracted={result['infos_replay'].get('extracted_count', 0)}"
                 )
+            probe_page_no = 1
+            if isinstance(effective_body, dict):
+                try:
+                    probe_page_no = max(1, int(effective_body.get("currentPage") or 1))
+                except Exception:
+                    probe_page_no = 1
+            for row in (result.get("infos_replay", {}).get("extracted_companies") or []):
+                row["source_page"] = probe_page_no
+                row["data_from_page"] = probe_page_no
             if csv_stream_writer and result.get("infos_replay", {}).get("extracted_companies"):
                 csv_stream_writer.append_rows(
                     result["infos_replay"]["extracted_companies"],
