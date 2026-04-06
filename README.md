@@ -123,6 +123,15 @@ Process `f` reference docs:
 - `f_DBD_Company_List_Scraper_WIth_Filter/README.md`
 - `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md`
 
+Process `f` notable runtime files:
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_run.log` (timestamped runtime trace)
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_page_on.png` (latest UI wait-state capture)
+
+Process `f` notable config controls:
+- `prefer_direct_search_url` (direct URL first, search-box fallback)
+- `sort_label` (UI sort selection before capture/replay)
+- `pages = -1` with `fetch_all_max_pages` safety cap
+
 ## Result Examples (From Latest Run)
 
 To keep this README short, full examples are stored in `result_examples/`:

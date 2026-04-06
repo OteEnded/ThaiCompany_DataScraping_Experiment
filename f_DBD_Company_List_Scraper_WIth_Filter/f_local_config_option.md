@@ -27,11 +27,15 @@ This file explains how to configure and run process f using local JSON config.
 Note:
 - Runtime supports UI-first filter apply, then API replay for pagination.
 - For config, put labels from lists below. The script applies them through UI and captures effective payload.
+- If active filters exist but captured replay body lacks filter keys, runtime rebuilds a filtered replay body from config mapping.
 
 ## Config schema
 - search_term: string (preferred search keyword key; default บริษัท)
 - query: string
+- sort_label: string (optional UI sort label; ex. จังหวัด (ก-ฮ))
+- prefer_direct_search_url: boolean (default true)
 - pages: integer (>0 or -1 for fetch-all)
+- fetch_all_max_pages: integer >= 1 (hard safety cap when pages = -1)
 - headless: boolean
 - channel: chromium | chrome | msedge
 - settle_seconds: integer >= 0
@@ -54,7 +58,10 @@ Note:
 {
   "search_term": "บริษัท",
   "query": "บริษัท",
+  "sort_label": "จังหวัด (ก-ฮ)",
+  "prefer_direct_search_url": true,
   "pages": 5,
+  "fetch_all_max_pages": 50,
   "headless": false,
   "channel": "chrome",
   "settle_seconds": 8,
@@ -78,6 +85,39 @@ Note:
   }
 }
 ```
+
+## Runtime diagnostics outputs
+- `last_run.log`: full timestamped execution log.
+- `last_page_on.png`: latest page/UI wait screenshot for troubleshooting stale loading states.
+- `f_search_result.json.debug.timing`: per-page + overall timing summary.
+
+## Sort options
+Source artifact: f_DBD_Company_List_Scraper_WIth_Filter/dumps/f_sort_options_labels.json
+
+- `ชื่อนิติบุคคล (ก-ฮ)`
+- `ประเภทนิติบุคคล (ก-ฮ)`
+- `ประเภทธุรกิจ (ก-ฮ)`
+- `จังหวัด (ก-ฮ)`
+- `ทุนจดทะเบียน (มาก-น้อย)`
+- `รายได้ (มาก-น้อย)`
+- `กำไรสุทธิ (มาก-น้อย)`
+
+## Sort behavior note (province sort)
+- When `sort_label` is `จังหวัด (ก-ฮ)`, UI intent maps to API `sortBy=pvDesc`.
+- Probing showed `pvDesc` can repeat the same companies across pages (pagination instability).
+- Runtime therefore keeps a stability workaround during replay:
+  - requested: `pvDesc`
+  - actual replay sort: `jpName`
+  - final output: post-sorted by province
+
+You may see this in logs:
+- `Replay payload sortBy: requested=pvDesc, actual_api=jpName (pvDesc pagination workaround)`
+
+Probing findings (for awareness):
+- `pvDesc`: unstable pagination (duplicate-heavy)
+- `locationProvince.pvDesc`: stable in probe
+- `pvCode`: stable in probe
+- `jpName`: stable in probe
 
 ## Suggested search terms
 - บริษัท

@@ -121,3 +121,242 @@ Current observed behavior:
 ## Maintenance Notes
 - Keep this file updated each time endpoint/filter understanding improves
 - Record selector changes and endpoint contract changes with short dated notes
+
+## Latest Update (2026-04-03)
+- Fixed fetch-all bug for `pages = -1` in `f_main.py`:
+  - Previous behavior accidentally clamped replay pages using `max(1, pages)`, preventing true fetch-all.
+  - Current behavior passes the real `pages` value into API replay pagination.
+- Added direct-search strategy support:
+  - New config key: `prefer_direct_search_url` (default `true`).
+  - Flow now tries `/juristic/searchInfo?keyword=...` first, then falls back to search-box submit automatically.
+- Validated user-provided filter set (province=กระบี่, status=ยังดำเนินกิจการอยู่, jpType=บริษัทจำกัด+บริษัทมหาชนจำกัด, biz size=M+L) with `pages=-1`:
+  - `status=ok`
+  - `companies=173`
+  - replay pages `2..18` (`replay_page_stats_count=17`)
+  - last page rows `3` (natural stop condition)
+- Added detailed runtime logging:
+  - New output file: `last_run.log`.
+  - Logs also print to console with timestamp.
+  - Logged milestones include config summary, strategy path, filter apply attempt, UI/replay progress, detected page hints, and final summary.
+- Added Windows-safe console logging fallback to avoid cp1252 Unicode print crashes.
+- Added page-cap/shift logic when configured pages exceed discovered pages:
+  - Replay now accepts `total_pages_hint` from API payload.
+  - If config pages is higher than discovered max page, target is shifted down and logged.
+  - Replay also stops when a page returns `< PAGE_SIZE` rows (last-page guard).
+
+## Latest Update (2026-04-03, continued)
+- Added detailed waiting diagnostics for UI-side waits:
+  - New file: `last_page_on.png` (single latest waiting-state screenshot, overwritten each capture).
+  - Screenshot is captured only for page/UI waits (not API-only waits), including:
+    - filter toggle readiness timeout,
+    - filter form readiness timeout,
+    - loader overlay clear timeout,
+    - table-result readiness timeout,
+    - click-retry wait states.
+- Hardened filter form readiness pipeline:
+  - `wait_filter_toggle_ready(...)` now polls and captures periodic wait snapshots.
+  - Added `wait_filter_form_ready(...)` to ensure panel + headings + submit button are ready and overlay not active before interaction.
+  - `click_with_overlay_retry(...)` now captures wait snapshots on each blocked attempt.
+- Enhanced page progress logs in console + `last_run.log`:
+  - Replay now logs `current/last` form: `API replay fetching X/Y` and `API replay done X/Y`.
+  - Logs filtered total pages after replay/inference: `Filtered list total pages: N`.
+- Live validation run (with current f_local_config at runtime):
+  - Filter form remained loading and timed out (`Filter form not ready within 45000 ms`).
+  - Wait snapshots were captured repeatedly to `last_page_on.png`.
+  - Replay still executed with captured contract and logged progress in `X/Y` format.
+  - Output ended `status=partial`, `companies=0`, inferred `last_page_number=2` for that run.
+
+## Current Reliability Gaps (to harden next)
+- Advanced filter panel can be slow to become interactable after list load.
+- In some runs, panel toggle appears late or not at all, causing filter apply timeout.
+- Loader overlay (`.loader-overlay-full`) can intercept clicks during multiselect operations.
+
+Additional observed gap:
+- Even when panel is visible, form internals can remain in loading state long enough to miss filter application window.
+
+## Immediate Next Hardening Plan
+1. Add resilient wait strategy for filter panel toggle (presence + visible + interactable + retry).
+2. Add loader-overlay wait/clear checkpoints before each multiselect click.
+3. Add graceful fallback when filter panel cannot be opened:
+  - continue with unfiltered/direct replay only if explicitly allowed,
+  - otherwise return explicit `status=partial` + reason in `debug` and logs.
+4. Add retry envelopes around filter apply blocks with bounded backoff and detailed step-level logging.
+
+## Latest Update (2026-04-03, replay guard + timing)
+- Diagnosed runaway pagination case (`totalPages=141600`) as a replay-body mismatch:
+  - UI filter path could appear successful,
+  - but captured infos replay body sometimes missed filter keys,
+  - causing broad/unfiltered metadata and unrealistic total pages.
+- Added replay-body guard in `f_main.py`:
+  - detect missing filter keys on captured body when filters are active,
+  - rebuild filtered replay payload from local config mapping,
+  - then replay with enforced filtered keys.
+- Added/confirmed strict mapping for provinces used in active runs (including `กระบี่ -> 81`) to avoid label leakage into API payload.
+- Added bounded fetch-all control via `fetch_all_max_pages` to prevent catastrophic long runs even when metadata is wrong.
+- Added sort application support from config (`sort_label`) before capture/replay.
+- Added timing instrumentation:
+  - per replay page duration,
+  - overall process duration,
+  - summary persisted in `f_search_result.json` debug/timing fields and logs.
+- Latest smoke validation after replay guard:
+  - log confirmed fallback activation: captured body lacked filter keys, rebuild path used,
+  - filtered total pages hint dropped to expected range (`18`),
+  - run completed `status=ok` with non-empty output (`10` rows for `pages=1`).
+
+## Updated Next Iteration Plan
+1. Re-validate full user scenario with `pages=-1` and sensible `fetch_all_max_pages` (e.g., 30-50).
+2. Add post-run assertions to verify output rows remain within active filter constraints.
+3. Keep improving filter-panel readiness under slow/overlay-heavy sessions.
+4. Add optional checkpoint/resume for long filtered runs.
+
+---
+
+## Latest Update (2026-04-03, pvDesc Pagination Fix + Filter Validation)
+
+### Problem Discovered
+- User requested sort by `จังหวัด (ก-ฮ)` (province sort, API value `pvDesc`)
+- Expected: results ordered by province, all unique rows across pages
+- Actual: pages 3-5 returned identical กระบี่ rows (same 10 companies repeated)
+- Root cause: **Server-side pagination is broken for `pvDesc` sort** — server returns page 1 results on all subsequent pages when sorted by province
+
+### Solution Implemented
+1. **Dual-sort strategy**:
+   - Config requests: `sort_label: "จังหวัด (ก-ฮ)"` (user sees this)
+   - API sends: `sortBy: "jpName"` (stable pagination, each page is unique)
+   - Output post-sorted: by `(province, juristic_id)` after dedup
+   
+2. **Code mappings**:
+   - `apply_sort_to_payload()`: Maps `pvDesc → jpName` internally via `PAGINATION_STABLE_OVERRIDE` dict
+   - Post-process logic: If `sort_label == "จังหวัด (ก-ฮ)"`, sorts output by province
+   - Preserves fetch order: Removed final `sorted()` by juristic_id that was overriding province grouping
+
+3. **Log messages clarified**:
+   - Format: `API replay fetching 2/3193 <=15 ..` (no double `<=cap` suffix)
+   - Shows: `Replay payload sortBy: requested=pvDesc, actual_api=jpName (pvDesc pagination workaround)`
+   - When validation fails: saves screenshot to `last_page_on.png` with reason
+
+### Filter Validation Guard (NEW)
+Added check after API probe:
+```
+IF active_filters AND total_pages_hint >= 5000
+  THEN stop with error "Filter validation failed: page_count=X (expected <5000 for filtered data)"
+  RETURN status=partial, empty companies array
+```
+- Prevents wasting requests on unfiltered data (140k+ pages) when server ignores filters
+- Captures page state to `last_page_on.png` for debugging
+
+### Test Results (2026-04-03)
+| Config | Pages | Companies | Duplicates | Duration | Status |
+|--------|-------|-----------|-----------|----------|--------|
+| จังหวัด sort, 15 pages | 15 | 150 | 0 | ~1:54 | ✅ Perfect |
+| จังหวัด sort, 8 pages | 8 | 70 | 0 | ~7:10 | ✅ OK |
+
+All results are province-sorted (Bangkok: 59 companies, then กาญจนบุรี, etc.)
+
+### Code Changes
+- `apply_sort_to_payload()` (line ~595): Added `PAGINATION_STABLE_OVERRIDE` mapping
+- `replay_infos_pages()` (line ~2120): Added filter validation check before replay
+- Post-sort logic (line ~2200): Enforces sort by `(province, juristic_id)` when pvDesc requested
+- Log messaging (line ~2088): Shows both requested and actual API sort values
+- Early-stop guard: Unchanged (3 consecutive zero-new-row pages)
+
+### Current Configuration
+```json
+{
+  "sort_label": "จังหวัด (ก-ฮ)",
+  "fetch_all_max_pages": 8,
+  "filters": {
+    "status_codes": ["ยังดำเนินกิจการอยู่"],
+    "juristic_type_codes": ["บริษัทมหาชนจำกัด", "บริษัทจำกัด"],
+    "capital_min": 5000000,
+    "capital_max": 100000000000,
+    "revenue_min": 100000000,
+    "net_profit_min": 10000000
+  }
+}
+```
+
+### Known Limitations (Confirmed)
+1. **pvDesc sort is broken server-side** — use workaround (jpName API sort + post-sort)
+2. **Saved JSON contains stale sortBy value** — `infos_contract.body.sortBy` shows pre-override; actual API calls use corrected value
+3. **Site load times vary** — filter panel can timeout; script retries and falls back to captured contract
+4. **Occasional HTTP 500** — retry logic handles it (seen on pages 5, 11 in test runs)
+
+### Reliability Status
+- ✅ Pagination 100% stable (all pages return unique rows)
+- ✅ Deduplication working (0 duplicates across 150 companies)
+- ✅ Filter validation prevents wasted requests
+- ✅ Streaming CSV confirmed working (persists mid-run if crash)
+- ✅ Sort override transparent to user (requests one sort, gets it in output)
+- ⚠️ Filter panel load can be slow (45s+ timeout in edge cases)
+
+## Latest Update (2026-04-03, UI Fallback Verification + Direct URL Optimization)
+
+### What Was Verified
+- Isolated UI navigation proof-of-concept confirmed paginator input jump works when targeting the numeric input directly.
+- Manual probe validated page navigation from page 1 to page 6 through paginator input + Enter.
+
+### Runtime Behavior Changes
+1. Direct URL optimization:
+  - Added direct-load success flag in `f_main.py` flow.
+  - If `/juristic/searchInfo?keyword=...` loads successfully, script now skips re-entering keyword in search box.
+  - Log explicitly records this branch to avoid ambiguity during troubleshooting.
+
+2. Replay timeout + retry diagnostics:
+  - Timeout handling in replay path now emits explicit timeout-attempt logs.
+  - Retry logs distinguish timeout/slow failures from ordinary non-200 responses.
+
+3. UI fallback trigger tuning:
+  - UI probe is no longer invoked for every quick transient API `500`.
+  - Probe is prioritized for slow/timeout-like conditions where page-state desync is more likely.
+
+4. Final output consistency:
+  - Packed CSV is rewritten from final post-processed company list so CSV order matches final dedup/sort logic.
+
+### Config Integrity Notes
+- During quick test edits, `f_local_config.json` briefly hit BOM/encoding corruption.
+- Config was restored to valid UTF-8 JSON with Thai labels preserved.
+- Current validated local baseline:
+  - `search_term/query`: `บริษัท`
+  - `sort_label`: `จังหวัด (ก-ฮ)`
+  - `prefer_direct_search_url`: `true`
+  - `pages`: `-1`
+  - `fetch_all_max_pages`: `12`
+
+### Remaining Operational Caveat
+- In unstable live sessions, UI fallback may still fail to confirm page advance immediately due to slow/interrupted page interactivity.
+- Existing retry envelope typically recovers and allows run completion, but this remains the main fragile area to monitor in long runs.
+
+## Latest Update (2026-04-03, Sort Probing Results)
+
+### Probing Objective
+- Determine whether province-sort behavior can be fixed without forcing `jpName` replay sort.
+
+### What Was Probed
+- Replayed `/api/v1/company-profiles/infos` with active filters and compared pagination uniqueness across multiple pages.
+- Candidate API sort keys tested:
+  - `pvDesc`
+  - `locationProvince.pvDesc`
+  - `pvCode`
+  - `jpName`
+
+### Findings
+- `pvDesc` remains duplicate-heavy across pages (pagination instability confirmed).
+- `locationProvince.pvDesc` was stable in probe (unique rows across tested pages).
+- `pvCode` was stable in probe (unique rows across tested pages).
+- `jpName` was stable in probe (unique rows across tested pages).
+
+### Current Runtime Decision
+- Keep production-safe path:
+  - user requests province sort (`จังหวัด (ก-ฮ)` / `pvDesc`)
+  - replay uses stable sort (`jpName`)
+  - final output is post-sorted by province
+- This explains log line:
+  - `Replay payload sortBy: requested=pvDesc, actual_api=jpName (pvDesc pagination workaround)`
+
+### Next Potential Enhancement (optional)
+- Add auto-probe selection for province intent:
+  1. try `locationProvince.pvDesc`
+  2. fallback `pvCode`
+  3. fallback `jpName`
+- Keep final post-sort by province for consistent output ordering.

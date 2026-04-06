@@ -64,7 +64,10 @@ The script reads runtime options from `f_local_config.json`.
 Key fields:
 - `search_term`: preferred search term key (default: `บริษัท`).
 - `query`: backward-compatible alias of `search_term`.
+- `sort_label`: UI sort label to apply before capture/replay (optional).
+- `prefer_direct_search_url`: use direct result URL first, then fallback to search-box submit.
 - `pages`: page count (`-1` means fetch until end).
+- `fetch_all_max_pages`: hard cap for fetch-all mode to avoid runaway replay.
 - `headless`: browser mode.
 - `channel`: `chromium | chrome | msedge`.
 - `settle_seconds`: extra wait after landing.
@@ -97,7 +100,22 @@ Runtime behavior:
 2. Open advanced filter panel and apply selected values.
 3. Submit filter search in UI.
 4. Capture latest `infos` API request contract.
-5. Replay API request for pages 2..N.
+5. Validate captured body and rebuild filtered replay payload from config when filter keys are missing.
+6. Replay API request for pages 2..N.
+
+---
+
+## Runtime Logs and Diagnostics
+Process `f` writes runtime telemetry to:
+- `last_run.log`: timestamped run logs (also mirrored to console).
+- `last_page_on.png`: latest UI wait-state screenshot (overwritten each capture).
+
+Log highlights:
+- Strategy decision (direct URL vs search-box fallback)
+- Filter readiness/apply milestones
+- Replay progress in `current/last` format
+- Total pages hint and bounded replay target
+- Per-page duration and overall run duration summary
 
 ---
 
@@ -131,6 +149,7 @@ Resilience features in script:
 - Direct search URL fallback when submit flow is flaky.
 - Multi-signal result readiness check with long timeout.
 - API replay retries/backoff for transient errors.
+- Filter payload guard that enforces config-derived filters when captured replay body is incomplete.
 - Storage-state reuse to keep session continuity.
 - Structured blocked/partial statuses instead of hard crash.
 
@@ -180,7 +199,24 @@ Use `dumps/` files to inspect request/response flow and HTML snapshots.
 ## Known Caveats
 - Site performance and anti-bot behavior vary by session/time.
 - Some runs may not expose list API immediately.
-- Fetch-all mode (`pages = -1`) can be very long; use cautiously.
+- Fetch-all mode (`pages = -1`) can still be long; always set a sensible `fetch_all_max_pages` cap.
+
+### Province Sort Caveat (Important)
+- UI label `จังหวัด (ก-ฮ)` maps to API `sortBy=pvDesc`.
+- Live probing confirmed `pvDesc` is pagination-unstable: many duplicate companies can repeat across pages.
+- Current runtime intentionally uses a stable API sort for replay (`jpName`) and then post-sorts final output by province.
+- This is why logs may show:
+  - `Replay payload sortBy: requested=pvDesc, actual_api=jpName (pvDesc pagination workaround)`
+
+Probing summary (filtered scenario, 5-page sample):
+- `pvDesc`: duplicate-heavy across pages (unstable)
+- `locationProvince.pvDesc`: unique rows across tested pages (stable in probe)
+- `pvCode`: unique rows across tested pages (stable in probe)
+- `jpName`: unique rows across tested pages (stable in probe)
+
+Note:
+- Stable alternatives above were verified by probing and are candidates for future auto-selection logic.
+- Current production-safe behavior remains `pvDesc -> jpName` with final province post-sort.
 
 ---
 

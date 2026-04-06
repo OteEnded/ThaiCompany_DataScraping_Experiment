@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-04-02 (process f API contract/replay/decrypt + packed CSV export). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-04-03 (process f 18-page validation + stuck-load refresh recovery + province-sort probing/docs sync). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -228,17 +228,39 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `1d7412f` — "OteEnded[docs]: update AI_CarryOn git state after docs split"
+- **Last commit:** `88951e5` — "Migrate processes a/b/d/e to local configs and add process READMEs"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Pending local changes (not committed yet):**
-- `b_DBD_Datawarehouse_Scraper_Single_Company_By_ID/b_AI_Local_Context.md` updated with Playwright iteration history and anti-bot execution policy.
-- `f_DBD_Company_List_Scraper_WIth_Filter/` actively developed (`f_main.py`, `f_AI_Local_Context.md`, `dumps/`, `result_packed.csv`).
-- `f_main.py` now supports: config-driven runs via `f_local_config.json`, UI+API hybrid filters, slow-load readiness detection, endpoint contract capture, replay + decrypt with retry/backoff, and packed CSV export.
-- Process `f` validated 10-page filtered extraction (100 rows) using UI-applied filters + API replay pages 2..10.
-- `f_local_config_option.md` added with full combobox option lists and config usage (including search-term suggestions).
-- `f_DBD_Company_List_Scraper_WIth_Filter/README.md` added with full process documentation and operating guide.
-- `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/` created for future sample outputs.
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py`
+  - Fixed fetch-all (`pages=-1`) replay bug.
+  - Added direct URL-first search (`/juristic/searchInfo?keyword=...`) with search-box fallback.
+  - Added detailed timestamped runtime logging to console + `last_run.log`.
+  - Added page-shift guard when configured pages exceed discovered pages (`total_pages_hint` cap + last-page row-count stop).
+  - Added waiting-state screenshot capture to `last_page_on.png` during UI waits/timeouts.
+  - Added stronger filter-panel readiness checks (toggle readiness + form readiness + overlay-clear retries).
+  - Added replay progress in `current/last` format and explicit `Filtered list total pages: N` logging.
+  - Added replay-body filter guard: if captured infos body lacks filter keys while filters are active, rebuild replay body from config mapping.
+  - Added fetch-all safety cap handling (`fetch_all_max_pages`) for `pages=-1` runs.
+  - Added sort application from config (`sort_label`) and detailed timing summary fields.
+  - Added stuck-loading recovery for filter apply: refresh-and-retry loop with bounded attempts (`stuck_refresh_retries`, clamped 3..5).
+  - Added explicit terminal error logging when refresh retries are exhausted during filter apply.
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.json`
+  - Added `prefer_direct_search_url`, `sort_label`, and `fetch_all_max_pages`; updated active validation filter set.
+- `f_DBD_Company_List_Scraper_WIth_Filter/README.md`
+  - Synced runtime behavior, config keys, diagnostics, and province-sort probing caveat (`pvDesc` instability + workaround rationale).
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md`
+  - Synced config schema/diagnostics and added user-facing province-sort behavior note (requested `pvDesc`, replay `jpName`).
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md`
+  - Synced with latest fixes, 18-page validation notes, and sort probing findings (`pvDesc` vs stable alternatives).
+- `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/f_search_result.json`
+  - Updated to latest validated 18-page reference output.
+- `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/result_packed.csv`
+  - Updated to latest validated 18-page reference output (180 companies).
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_run.log`
+  - New runtime log artifact generated from latest runs.
+- `f_DBD_Company_List_Scraper_WIth_Filter/last_page_on.png`
+  - New latest-wait screenshot artifact generated during UI waiting states.
 
 **Gitignored files (do NOT commit):**
 - `config.json` (credentials)
@@ -255,31 +277,34 @@ Run examples committed in `result_examples/`.
 
 Priority order based on current state:
 
-1. **Add filter automation in f**
-  Convert manual filter flow into scriptable selector actions + configurable filter inputs.
+1. **Optional sort auto-selection enhancement in f**
+  For province intent, auto-probe and choose stable API sort (`locationProvince.pvDesc` → `pvCode` → `jpName`) while preserving final province post-sort.
 
-2. **Scale f pagination beyond 5 pages**
-  Add pacing/checkpoint controls for longer runs while minimizing anti-bot triggers.
+2. **Run bounded full validation in f (`pages=-1`)**
+  Validate real filtered fetch-all behavior with `fetch_all_max_pages` cap and confirm output remains non-empty and constrained.
 
-3. **Run broader extraction validation in f**
-  Compare UI-extracted rows vs replay-decrypted API rows across larger page ranges.
+3. **Add post-run filter assertions in f**
+  Validate exported rows against active filter constraints (e.g., province/status/type) and flag mismatch runs.
 
-4. **c guard for blocked b output**
+4. **Improve filter-panel stability in f**
+  Continue hardening overlay-aware interactions and readiness checks for slow UI states (refresh-retry is now in place and validated).
+
+5. **c guard for blocked b output**
   Add hard stop when `source_status != "ok"` before summary generation.
 
-5. **Test b with different juristic IDs**
+6. **Test b with different juristic IDs**
   Verify scraper generalization beyond OSOTSPA.
 
-6. **Add `e` results to `result_examples/`**
+7. **Add `e` results to `result_examples/`**
   Refresh examples for additional symbols.
 
-7. **Add `d` results to `result_examples/`**
+8. **Add `d` results to `result_examples/`**
   Refresh SDK examples (requires valid credentials).
 
-8. **Connect a + b pipelines**
+9. **Connect a + b pipelines**
   Optional orchestration layer from search results to DBD scrape.
 
-9. **Multiple juristic IDs in one b run**
+10. **Multiple juristic IDs in one b run**
   Add batch mode while reusing warmed session state.
 
 ---
@@ -334,3 +359,10 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_L
 - 2026-04-02: Added `f_local_config_option.md` with full harvested filter options and suggested search terms (`บริษัท`, `ห้างหุ้นส่วน`).
 - 2026-04-02: Validated requested 10-page filtered run in process `f` with 100 rows and stable replay page stats.
 - 2026-04-02: Added process-`f` `README.md` documenting architecture, run/config workflow, filter API contract, anti-bot strategy, and outputs.
+- 2026-04-03: Process `f` fixed replay-body mismatch causing unfiltered `totalPages` spikes (e.g., 141600) by rebuilding filtered payload from config when captured body lacks filter keys.
+- 2026-04-03: Process `f` added bounded fetch-all control (`fetch_all_max_pages`), config sort support (`sort_label`), and per-page/overall timing summaries.
+- 2026-04-03: Synced process `f` docs (`README.md`, `f_local_config_option.md`, `f_AI_Local_Context.md`) and this carry-on file with latest behavior.
+- 2026-04-03: Validated process `f` 18-page run end-to-end (`status=ok`, `companies=180`, duplicate-free final output) with retries on transient API 500/timeout.
+- 2026-04-03: Added process `f` stuck-loading filter recovery (refresh + retry envelope with bounded retries and explicit exhaustion logging).
+- 2026-04-03: Probed province-sort alternatives and confirmed `pvDesc` is duplicate-heavy; documented stable candidates (`locationProvince.pvDesc`, `pvCode`, `jpName`) and retained production-safe workaround.
+- 2026-04-03: Updated `result_examples/f_DBD_Company_List_Scraper_WIth_Filter/` with latest validated run outputs (`f_search_result.json`, `result_packed.csv`).
