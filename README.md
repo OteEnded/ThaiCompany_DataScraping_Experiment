@@ -131,6 +131,8 @@ Process `f` notable config controls:
 - `prefer_direct_search_url` (direct URL first, search-box fallback)
 - `sort_label` (UI sort selection before capture/replay)
 - `pages = -1` with `fetch_all_max_pages` safety cap
+- `resume_from_page` (continue replay from configured page after init/filter/sort)
+- `track_progress_in_config` + `runtime_progress.last_page_extracted` (checkpoint persistence)
 
 Process `f` recent hardening (2026-04-06):
 - UI row-confirmation retry waits were increased from `700ms` to `1500ms` in both:

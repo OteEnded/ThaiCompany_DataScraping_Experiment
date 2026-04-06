@@ -33,3 +33,13 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_local_config.
 - This config keeps `force_ui_probe_rows_for_test=false` for real temp-prod behavior.
 - If the site is unstable, rerun with same config and warmed `storage_state.json`.
 - Keep proof-only script `f_ui_probe_page5_test.py` out of CI/CD runtime path.
+
+## Resume and Progress Checkpoint
+- Temp-prod config supports replay continuation:
+   - `resume_from_page`
+   - `track_progress_in_config`
+   - `runtime_progress.last_page_extracted`
+- Recommended usage:
+   1. First run: keep `resume_from_page=1`.
+   2. If interrupted: set `resume_from_page` to last successful page checkpoint and rerun.
+   3. For full restart: reset `resume_from_page=1` and clear `runtime_progress.last_page_extracted`.

@@ -48,7 +48,7 @@ def wait_for_loaded_list_rows(page, timeout_ms: int, logger: RunLogger | None = 
     return []
 
 
-def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path) -> int:
+def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path, target_page: int = 5) -> int:
     logger = RunLogger(log_path)
     config = load_local_config(config_path)
 
@@ -61,7 +61,7 @@ def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path) -> int
 
     # No-filter proof runner by design.
     logger.log(
-        "UI probe page-5 proof started "
+        f"UI probe page-{target_page} proof started "
         f"query='{search_term}', headless={headless}, channel={channel}, timeout={results_timeout_seconds}s"
     )
 
@@ -121,16 +121,16 @@ def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path) -> int
                     "pid": os.getpid(),
                     "config_path": str(config_path),
                     "query": search_term,
-                    "target_page": 5,
+                    "target_page": target_page,
                     "no_filter_mode": True,
                 },
                 "evidence": {
                     "page1_rows": 0,
-                    "page5_rows": 0,
-                    "page5_success": False,
+                    "target_rows": 0,
+                    "target_success": False,
                     "blocked_reason": "page1_not_loaded",
                 },
-                "companies_page5": [],
+                "companies_target": [],
             }
             out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
             logger.log(f"Saved probe result JSON: {out_path}")
@@ -146,29 +146,29 @@ def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path) -> int
             browser.close()
             return 2
 
-        page5_rows = ui_probe_navigate_to_page(
+        target_rows = ui_probe_navigate_to_page(
             page,
-            target_page=5,
+            target_page=target_page,
             timeout_ms=results_timeout_ms,
             logger=logger,
         )
-        logger.log(f"Page-5 rows observed after UI probe: {len(page5_rows)}")
+        logger.log(f"Page-{target_page} rows observed after UI probe: {len(target_rows)}")
 
         result = {
-            "status": "ok" if page5_rows else "partial",
+            "status": "ok" if target_rows else "partial",
             "run": {
                 "pid": os.getpid(),
                 "config_path": str(config_path),
                 "query": search_term,
-                "target_page": 5,
+                "target_page": target_page,
                 "no_filter_mode": True,
             },
             "evidence": {
                 "page1_rows": len(page1_rows),
-                "page5_rows": len(page5_rows),
-                "page5_success": bool(page5_rows),
+                "target_rows": len(target_rows),
+                "target_success": bool(target_rows),
             },
-            "companies_page5": page5_rows,
+            "companies_target": target_rows,
         }
 
         out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -184,7 +184,7 @@ def run_ui_page5_probe(config_path: Path, out_path: Path, log_path: Path) -> int
         context.close()
         browser.close()
 
-    return 0 if page5_rows else 2
+    return 0 if target_rows else 2
 
 
 def main() -> None:
@@ -204,6 +204,12 @@ def main() -> None:
         default="tmp_ui_probe_page5_test.log",
         help="Log file path (default: tmp_ui_probe_page5_test.log)",
     )
+    parser.add_argument(
+        "--target-page",
+        type=int,
+        default=5,
+        help="Target page number to navigate to (default: 5)",
+    )
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -221,7 +227,12 @@ def main() -> None:
         log_path = Path(__file__).resolve().parent / log_path
     log_path = log_path.resolve()
 
-    code = run_ui_page5_probe(config_path=config_path, out_path=out_path, log_path=log_path)
+    code = run_ui_page5_probe(
+        config_path=config_path,
+        out_path=out_path,
+        log_path=log_path,
+        target_page=max(2, int(args.target_page)),
+    )
     raise SystemExit(code)
 
 

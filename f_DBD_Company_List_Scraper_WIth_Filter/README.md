@@ -72,6 +72,10 @@ Key fields:
 - `channel`: `chromium | chrome | msedge`.
 - `settle_seconds`: extra wait after landing.
 - `results_timeout_seconds`: long wait budget for slow result loading.
+- `resume_from_page`: replay continuation start page (default 1).
+- `track_progress_in_config`: enable writing latest extracted page back to config.
+- `runtime_progress.last_page_extracted`: persisted latest extracted page checkpoint.
+- `runtime_progress.updated_at`: timestamp of last checkpoint update.
 - `storage_state`: path to Playwright storage state.
 - `use_storage_state`: enable/disable storage state use.
 - `filters`: advanced filter object.
@@ -101,7 +105,7 @@ Runtime behavior:
 3. Submit filter search in UI.
 4. Capture latest `infos` API request contract.
 5. Validate captured body and rebuild filtered replay payload from config when filter keys are missing.
-6. Replay API request for pages 2..N.
+6. Replay API request for pages 2..N (or continue from configured `resume_from_page`).
 
 ---
 

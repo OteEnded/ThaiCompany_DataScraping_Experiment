@@ -693,8 +693,14 @@ def default_local_config() -> dict:
         "fetch_all_max_pages": DEFAULT_FETCH_ALL_MAX_PAGES,
         "stuck_refresh_retries": DEFAULT_STUCK_REFRESH_RETRIES,
         "api_replay_attempt_threshold": 2,
+        "resume_from_page": 1,
+        "track_progress_in_config": True,
         "use_ui_probe_rows_on_api_failure": True,
         "force_ui_probe_rows_for_test": False,
+        "runtime_progress": {
+            "last_page_extracted": 0,
+            "updated_at": "",
+        },
         "storage_state": str(DEFAULT_STORAGE_STATE),
         "use_storage_state": True,
         "filters": {
@@ -746,6 +752,12 @@ def load_local_config(config_path: Path) -> dict:
     api_replay_attempt_threshold = int(config.get("api_replay_attempt_threshold", 2))
     config["api_replay_attempt_threshold"] = max(1, min(5, api_replay_attempt_threshold))
 
+    resume_from_page = int(config.get("resume_from_page", 1))
+    config["resume_from_page"] = max(1, resume_from_page)
+    config["track_progress_in_config"] = bool(config.get("track_progress_in_config", True))
+    if not isinstance(config.get("runtime_progress"), dict):
+        config["runtime_progress"] = {"last_page_extracted": 0, "updated_at": ""}
+
     settle_seconds = int(config.get("settle_seconds", 8))
     config["settle_seconds"] = max(0, settle_seconds)
 
@@ -789,6 +801,27 @@ def resolve_config_path(config_arg: str) -> Path:
 
     # Backward-compatible fallback: resolve relative to this script folder.
     return (BASE_DIR / config_path).resolve()
+
+
+def persist_last_page_to_config(config_path: Path, last_page: int, logger: RunLogger | None = None) -> None:
+    if not isinstance(last_page, int) or last_page < 1:
+        return
+    try:
+        raw = {}
+        if config_path.exists():
+            loaded = json.loads(config_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                raw = loaded
+        runtime_progress = raw.get("runtime_progress") if isinstance(raw.get("runtime_progress"), dict) else {}
+        runtime_progress["last_page_extracted"] = int(last_page)
+        runtime_progress["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        raw["runtime_progress"] = runtime_progress
+        # Convenience mirror for quick manual edits/reads.
+        raw["last_page_extracted"] = int(last_page)
+        config_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:
+        if logger:
+            logger.log(f"Failed to persist progress to config: {exc}")
 
 
 def wait_loader_overlay_clear(
@@ -1278,7 +1311,7 @@ def write_packed_csv(companies: list[dict], out_path: Path) -> None:
             writer.writerow({col: to_csv_value(row.get(col)) for col in PACKED_COLUMNS})
 
 
-def get_ui_current_page_number(page) -> int | None:
+def get_ui_page_signals(page) -> dict:
     try:
         value = page.evaluate(
             """
@@ -1299,7 +1332,7 @@ def get_ui_current_page_number(page) -> int | None:
                     return r.width > 0 && r.height > 0;
                 };
 
-                // Prefer active page indicator (more reliable than editable inputs).
+                let activePage = null;
                 const activeCandidates = [
                     document.querySelector('li.page-item.active a'),
                     document.querySelector('li.page-item.active'),
@@ -1308,62 +1341,92 @@ def get_ui_current_page_number(page) -> int | None:
                 ].filter(Boolean);
                 for (const el of activeCandidates) {
                     const n = parseNum(el.textContent || '');
-                    if (n) return n;
+                    if (n) {
+                        activePage = n;
+                        break;
+                    }
                 }
 
-                // Fallback: infer page from row index column (ลำดับที่), e.g. 171 => page 18.
+                let rowInferredPage = null;
+                let firstRowIndex = null;
                 const tr = document.querySelector('#table-filter-data tbody tr');
                 if (tr) {
                     const tds = Array.from(tr.querySelectorAll('td'));
                     if (tds.length >= 2) {
                         const idx = parseNum(tds[1]?.textContent || '');
                         if (idx) {
-                            const inferred = Math.floor((idx - 1) / 10) + 1;
-                            if (Number.isFinite(inferred) && inferred > 0) return inferred;
+                            firstRowIndex = idx;
+                            rowInferredPage = Math.floor((idx - 1) / 10) + 1;
                         }
                     }
                 }
 
-                // Paginator input (UI shape: "หน้า [1] / 3,191")
+                let inputPage = null;
                 const inputCandidates = Array.from(
                     document.querySelectorAll(
                         '.pagination input[type="number"], .pagination input[type="text"], ul.nav.pager input.form-control.numeric, .nav.pager input.form-control.numeric, input[aria-label="page"]'
                     )
                 )
                     .filter((el) => isVisible(el))
-                    // Prefer lower (usually active) paginator when multiple copies exist.
                     .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top);
                 for (const input of inputCandidates) {
                     const n = parseNum(input.value || input.getAttribute('value') || input.textContent || '');
-                    if (n) return n;
+                    if (n) {
+                        inputPage = n;
+                        break;
+                    }
                 }
 
-                // Broader fallback: any visible input located in a container text like "หน้า ... / ...".
-                const allInputs = Array.from(document.querySelectorAll('input[type="number"], input[type="text"]'));
-                for (const input of allInputs) {
-                    if (!isVisible(input)) continue;
-                    const parentText = String(input.closest('div, span, li, nav')?.textContent || '').replace(/\s+/g, ' ');
-                    if (!/หน้า\s*\d*\s*\//i.test(parentText) && !/\b\d+\s*\/\s*[\d,]+\b/.test(parentText)) continue;
-                    const n = parseNum(input.value || input.getAttribute('value') || '');
-                    if (n) return n;
+                if (!inputPage) {
+                    const allInputs = Array.from(document.querySelectorAll('input[type="number"], input[type="text"]'));
+                    for (const input of allInputs) {
+                        if (!isVisible(input)) continue;
+                        const parentText = String(input.closest('div, span, li, nav')?.textContent || '').replace(/\s+/g, ' ');
+                        if (!/หน้า\s*\d*\s*\//i.test(parentText) && !/\b\d+\s*\/\s*[\d,]+\b/.test(parentText)) continue;
+                        const n = parseNum(input.value || input.getAttribute('value') || '');
+                        if (n) {
+                            inputPage = n;
+                            break;
+                        }
+                    }
                 }
 
-                // Text fallback from pagination container.
+                let textPage = null;
                 const pText = document.querySelector('.pagination')?.textContent || '';
                 const m = pText.replace(/\s+/g, ' ').match(/หน้า\s*(\d+)\s*\//i);
                 if (m && m[1]) {
                     const n = Number(m[1]);
-                    if (Number.isFinite(n) && n > 0) return n;
+                    if (Number.isFinite(n) && n > 0) textPage = n;
                 }
-                return null;
+
+                // Prefer row-inferred page when available because it reflects actual rendered list rows.
+                let resolvedPage = rowInferredPage || activePage || inputPage || textPage || null;
+
+                const sources = [rowInferredPage, activePage, inputPage, textPage].filter((n) => Number.isFinite(n));
+                const unique = Array.from(new Set(sources));
+                const hasDisagreement = unique.length > 1;
+
+                return {
+                    resolvedPage,
+                    rowInferredPage,
+                    activePage,
+                    inputPage,
+                    textPage,
+                    firstRowIndex,
+                    hasDisagreement,
+                };
             }
             """
         )
-        if isinstance(value, int) and value > 0:
-            return value
+        return value if isinstance(value, dict) else {}
     except Exception:
-        pass
-    return None
+        return {}
+
+
+def get_ui_current_page_number(page) -> int | None:
+    signals = get_ui_page_signals(page)
+    value = signals.get("resolvedPage") if isinstance(signals, dict) else None
+    return int(value) if isinstance(value, int) and value > 0 else None
 
 
 def get_ui_total_pages_hint(page) -> int | None:
@@ -1491,6 +1554,22 @@ def ui_probe_navigate_to_page(
             return inferred == expected_page
         return bool(detected and detected == expected_page)
 
+    def log_page_signals(prefix: str) -> None:
+        if not logger:
+            return
+        try:
+            signals = get_ui_page_signals(page)
+            if not isinstance(signals, dict) or not signals:
+                return
+            if signals.get("hasDisagreement"):
+                logger.log(
+                    f"{prefix}: page signal disagreement resolved={signals.get('resolvedPage')} "
+                    f"row={signals.get('rowInferredPage')} active={signals.get('activePage')} "
+                    f"input={signals.get('inputPage')} text={signals.get('textPage')} firstRowIndex={signals.get('firstRowIndex')}"
+                )
+        except Exception:
+            pass
+
     def get_table_state() -> dict:
         try:
             return page.evaluate(
@@ -1587,9 +1666,54 @@ def ui_probe_navigate_to_page(
         retry_wait_ms = 1500
         poll_round = 0
         rescue_count = 0
+        saw_target_signal = False
+        rollback_count = 0
         while time.perf_counter() < deadline:
             poll_round += 1
-            detected = get_ui_current_page_number(page)
+            signals = get_ui_page_signals(page)
+            detected = signals.get("resolvedPage") if isinstance(signals, dict) else None
+            signal_candidates = []
+            if isinstance(signals, dict):
+                for key in ("rowInferredPage", "activePage", "inputPage", "textPage"):
+                    val = signals.get(key)
+                    if isinstance(val, int) and val > 0:
+                        signal_candidates.append(val)
+            has_target_signal = expected_page in signal_candidates
+            if has_target_signal:
+                saw_target_signal = True
+
+            if poll_round % 2 == 0:
+                log_page_signals(f"UI probe fallback poll={poll_round} expected={expected_page}")
+
+            # DBD often shows target page briefly, then rolls back to previous page while table is still loading.
+            # Detect that rollback and actively recommit target instead of waiting passively.
+            if saw_target_signal and detected and detected != expected_page:
+                rollback_count += 1
+                if logger:
+                    state = get_table_state()
+                    logger.log(
+                        "UI probe fallback: target-page rollback detected "
+                        f"expected={expected_page} detected={detected} rollback_count={rollback_count} "
+                        f"state={json.dumps(state, ensure_ascii=False)}"
+                    )
+                if rescue_count < 3:
+                    rescue_count += 1
+                    recommitted = rescue_recommit_target(expected_page)
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: rollback rescue recommit target {expected_page} "
+                            f"attempt={rescue_count}/3 success={recommitted}"
+                        )
+                if rollback_count >= 6:
+                    if logger:
+                        logger.log(
+                            f"UI probe fallback: repeated rollback while targeting page {expected_page}; aborting delayed-wait loop"
+                        )
+                    capture_ui_nav_page(page, f"ui_probe_rollback_abort_{expected_page}", logger=logger)
+                    return []
+                page.wait_for_timeout(retry_wait_ms)
+                continue
+
             if detected == expected_page:
                 rows = extract_company_candidates_from_dom(page)
                 if rows:
@@ -2228,6 +2352,7 @@ def replay_infos_pages(
     base_delay_ms: int = 900,
     max_retries: int = 2,
     total_pages_hint: int | None = None,
+    start_page: int = 2,
     fetch_all_max_pages: int = DEFAULT_FETCH_ALL_MAX_PAGES,
     logger: RunLogger | None = None,
     on_page_rows=None,
@@ -2282,7 +2407,13 @@ def replay_infos_pages(
             f"API replay fallback threshold: ui_probe_trigger_attempt={ui_probe_trigger_attempt}"
         )
 
-    current_page = 2
+    current_page = max(2, int(start_page or 2))
+    if current_page > final_page:
+        if logger:
+            logger.log(
+                f"API replay skipped: start_page={current_page} is beyond resolved_last_page={final_page}"
+            )
+        return all_rows, stats
     while current_page <= final_page:
         page_no = current_page
         page_started_at = time.perf_counter()
@@ -2789,6 +2920,8 @@ def scrape_company_list(
     fetch_all_max_pages: int,
     stuck_refresh_retries: int,
     api_replay_attempt_threshold: int,
+    resume_from_page: int,
+    track_progress_in_config: bool,
     use_ui_probe_rows_on_api_failure: bool,
     force_ui_probe_rows_for_test: bool,
     sort_label: str,
@@ -2796,6 +2929,7 @@ def scrape_company_list(
     filters: dict | None = None,
     logger: RunLogger | None = None,
     csv_stream_writer: IncrementalCSVWriter | None = None,
+    on_page_progress=None,
 ) -> dict:
     run_started_at = time.perf_counter()
     result = {
@@ -2834,6 +2968,8 @@ def scrape_company_list(
             "results_timeout_seconds": results_timeout_seconds,
             "stuck_refresh_retries": stuck_refresh_retries,
             "api_replay_attempt_threshold": api_replay_attempt_threshold,
+            "resume_from_page": resume_from_page,
+            "track_progress_in_config": track_progress_in_config,
             "use_ui_probe_rows_on_api_failure": use_ui_probe_rows_on_api_failure,
             "force_ui_probe_rows_for_test": force_ui_probe_rows_for_test,
             "api_response_hits_by_endpoint": {},
@@ -2855,7 +2991,9 @@ def scrape_company_list(
         logger.log(
             f"Runtime toggles: use_ui_probe_rows_on_api_failure={use_ui_probe_rows_on_api_failure}, "
             f"force_ui_probe_rows_for_test={force_ui_probe_rows_for_test}, "
-            f"api_replay_attempt_threshold={api_replay_attempt_threshold}"
+            f"api_replay_attempt_threshold={api_replay_attempt_threshold}, "
+            f"resume_from_page={resume_from_page}, "
+            f"track_progress_in_config={track_progress_in_config}"
         )
 
     with sync_playwright() as p:
@@ -3118,6 +3256,9 @@ def scrape_company_list(
                 logger.log(f"Sort apply exception: {exc}")
 
         ui_page_limit = 1 if pages == FETCH_ALL_PAGES else pages
+        if resume_from_page > 1:
+            # Resume mode still performs full init/filter/sort pipeline, then hands off to replay from configured page.
+            ui_page_limit = 1
         if logger:
             logger.log(
                 f"UI crawl plan resolved: ui_page_limit={ui_page_limit}, pages_requested={pages}"
@@ -3133,6 +3274,12 @@ def scrape_company_list(
                 logger.log(
                     f"UI page {current_page} captured: rows={len(dom_candidates)}, accumulated_ui_rows={len(result['companies'])}"
                 )
+            if on_page_progress and dom_candidates:
+                try:
+                    on_page_progress(current_page)
+                except Exception as exc:
+                    if logger:
+                        logger.log(f"Progress callback failed on UI page {current_page}: {exc}")
 
             if current_page >= ui_page_limit:
                 break
@@ -3354,12 +3501,26 @@ def scrape_company_list(
                 replay_contract,
                 pages=pages,
                 total_pages_hint=total_pages_hint,
+                start_page=max(2, int(resume_from_page or 1)),
                 fetch_all_max_pages=fetch_all_max_pages,
                 logger=logger,
                 on_page_rows=(
-                    (lambda page_no, rows: csv_stream_writer.append_rows(rows, source_label=f"api_page_{page_no}"))
-                    if csv_stream_writer
-                    else None
+                    (
+                        lambda page_no, rows: (
+                            (
+                                csv_stream_writer.append_rows(rows, source_label=f"api_page_{page_no}")
+                                if csv_stream_writer
+                                else len(rows)
+                            )
+                            if not on_page_progress
+                            else (
+                                (
+                                    on_page_progress(page_no),
+                                    csv_stream_writer.append_rows(rows, source_label=f"api_page_{page_no}") if csv_stream_writer else len(rows)
+                                )[1]
+                            )
+                        )
+                    )
                 ),
                 on_slow_or_failed_attempt=on_replay_probe_attempt,
                 ui_probe_trigger_attempt=api_replay_attempt_threshold,
@@ -3471,10 +3632,28 @@ def main() -> None:
 
     storage_state_path = Path(config["storage_state"]) if config.get("use_storage_state", True) else None
     filters = config.get("filters") if isinstance(config.get("filters"), dict) else {}
+    resume_from_page = max(1, int(config.get("resume_from_page", 1)))
+    track_progress_in_config = bool(config.get("track_progress_in_config", True))
     packed_csv_path = BASE_DIR / "result_packed.csv"
     csv_stream_writer = IncrementalCSVWriter(packed_csv_path, logger=logger)
 
     out_path = BASE_DIR / "f_search_result.json"
+    last_progress_page = {"value": 0}
+
+    def on_page_progress(page_no: int) -> None:
+        if not isinstance(page_no, int) or page_no < 1:
+            return
+        if page_no <= last_progress_page["value"]:
+            return
+        last_progress_page["value"] = page_no
+        if track_progress_in_config:
+            persist_last_page_to_config(config_path, page_no, logger=logger)
+        logger.log(f"Progress checkpoint updated: last_page_extracted={page_no}")
+
+    if logger:
+        logger.log(
+            f"Resume control: resume_from_page={resume_from_page}, track_progress_in_config={track_progress_in_config}"
+        )
 
     try:
         data = scrape_company_list(
@@ -3489,6 +3668,8 @@ def main() -> None:
             fetch_all_max_pages=config["fetch_all_max_pages"],
             stuck_refresh_retries=config["stuck_refresh_retries"],
             api_replay_attempt_threshold=config["api_replay_attempt_threshold"],
+            resume_from_page=resume_from_page,
+            track_progress_in_config=track_progress_in_config,
             use_ui_probe_rows_on_api_failure=config["use_ui_probe_rows_on_api_failure"],
             force_ui_probe_rows_for_test=config["force_ui_probe_rows_for_test"],
             sort_label=config["sort_label"],
@@ -3496,6 +3677,7 @@ def main() -> None:
             filters=filters,
             logger=logger,
             csv_stream_writer=csv_stream_writer,
+            on_page_progress=on_page_progress,
         )
 
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

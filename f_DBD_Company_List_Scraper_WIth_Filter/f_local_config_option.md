@@ -41,6 +41,11 @@ Note:
 - settle_seconds: integer >= 0
 - cdp_url: string
 - results_timeout_seconds: integer >= 10
+- resume_from_page: integer >= 1 (continue replay from this page after init/filter/sort)
+- track_progress_in_config: boolean (persist latest extracted page back into config)
+- runtime_progress:
+  - last_page_extracted: integer
+  - updated_at: ISO datetime string
 - storage_state: string path
 - use_storage_state: boolean
 - filters:
@@ -67,6 +72,12 @@ Note:
   "settle_seconds": 8,
   "cdp_url": "",
   "results_timeout_seconds": 180,
+  "resume_from_page": 1,
+  "track_progress_in_config": true,
+  "runtime_progress": {
+    "last_page_extracted": 0,
+    "updated_at": ""
+  },
   "storage_state": "storage_state.json",
   "use_storage_state": true,
   "filters": {
@@ -90,6 +101,17 @@ Note:
 - `last_run.log`: full timestamped execution log.
 - `last_page_on.png`: latest page/UI wait screenshot for troubleshooting stale loading states.
 - `f_search_result.json.debug.timing`: per-page + overall timing summary.
+
+## Resume / Progress checkpoint behavior
+- Runtime still performs normal initialization first:
+  - open URL, apply filters/sort, capture infos contract.
+- Replay continuation is controlled by `resume_from_page`:
+  - `1`: normal behavior.
+  - `>=2`: continue replay from that page.
+- When `track_progress_in_config=true`, runtime updates config while running:
+  - `runtime_progress.last_page_extracted`
+  - `runtime_progress.updated_at`
+  - mirror field `last_page_extracted` (top-level convenience value).
 
 ## Sort options
 Source artifact: f_DBD_Company_List_Scraper_WIth_Filter/dumps/f_sort_options_labels.json

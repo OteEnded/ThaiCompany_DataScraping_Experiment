@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-04-06 (process f UI-probe wait tuning, cleanup pass, and docs sync). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-04-06 (process f resume checkpoint feature, schema sync, cleanup, and docs sync). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -228,17 +228,24 @@ Run examples committed in `result_examples/`.
 - **Git:** Already initialized in the workspace root (`c:\data\AI_Search`)
 - **Remote:** `https://github.com/OteEnded/ThaiCompany_DataScraping_Experiment.git`
 - **Branch:** `main`
-- **Last commit:** `13b98c7` — "OteEnded[fix]: harden UI page confirmation and no-progress navigation"
+- **Last commit:** `aacd78c` — "OteEnded[fix]: tune ui probe retry cadence and sync docs"
 - **Commit message convention:** `OteEnded[type]: description` (e.g., `OteEnded[fix]:`, `OteEnded[feat]:`, `OteEnded[refactor]:`)
 
 **Pending local changes (not committed yet):**
 - `README.md` (root docs sync)
 - `AI_CarryOn.md` (this context update)
 - `f_DBD_Company_List_Scraper_WIth_Filter/README.md` (process-f docs sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/TEMP_PROD_RUNBOOK.md` (resume checkpoint runbook section)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config_option.md` (schema guide sync)
 - `f_DBD_Company_List_Scraper_WIth_Filter/f_AI_Local_Context.md` (latest runtime notes)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` (retry cadence tuning)
-- `f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py` (retry cadence tuning)
-- `progress_report_for_meneger/` (untracked local folder)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_main.py` (rollback handling + resume progress feature)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_ui_probe_page5_test.py` (target-page probe + compatibility fixes)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.json` (schema sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.temp_prod.json` (schema sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.ui_probe_test.json` (schema sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_local_config.ui_probe_nofilter_test.json` (schema sync)
+- `f_DBD_Company_List_Scraper_WIth_Filter/_probe_sort_options.py` (deleted cleanup)
+- `f_DBD_Company_List_Scraper_WIth_Filter/f_search_result_crash.json` (deleted cleanup)
 
 Notes:
 - Temporary proof artifacts were cleaned after latest verification cycle.
@@ -260,7 +267,7 @@ Notes:
 Priority order based on current state:
 
 1. **Re-run no-filter proof once DBD stabilizes**
-  Use `f_ui_probe_page5_test.py` and confirm strict gate: page-1 rows loaded before page-5 navigation.
+  Use `f_ui_probe_page5_test.py --target-page 3` and confirm rollback-aware logic detects/recovers page 3 -> page 2 snapback.
 
 2. **Optional sort auto-selection enhancement in f**
   For province intent, auto-probe and choose stable API sort (`locationProvince.pvDesc` → `pvCode` → `jpName`) while preserving final province post-sort.
@@ -351,3 +358,6 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_L
 - 2026-04-06: Process `f` increased UI loaded-row retry wait from `700ms` to `1500ms` in both main runtime and dedicated no-filter proof runner.
 - 2026-04-06: Process `f` no-filter proof had one successful validation (page1 rows confirmed, page5 rows extracted), followed by intermittent infinite-loading recurrence.
 - 2026-04-06: Cleaned temporary process-`f` proof artifacts (`last_page_in.png`, `last_page_on.png`, `last_run.log`, `tmp_ui_probe_page5_test.log`, `tmp_ui_probe_page5_result.json`) and synced docs/context files.
+- 2026-04-06: Process `f` added rollback-aware UI page detection/recommit handling for transient target-page snapback.
+- 2026-04-06: Process `f` added config-driven replay resume and progress checkpoints (`resume_from_page`, `track_progress_in_config`, `runtime_progress.last_page_extracted`).
+- 2026-04-06: Synced process-`f` config schema across all active local config files and cleaned unused files (`_probe_sort_options.py`, `f_search_result_crash.json`).
