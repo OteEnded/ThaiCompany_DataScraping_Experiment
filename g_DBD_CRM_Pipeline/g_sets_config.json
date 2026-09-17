@@ -1,0 +1,95 @@
+{
+  "_comment": "Collection plan for the full Thai company universe, partitioned by registered capital (ทุนจดทะเบียน). Every set carries the same status/type constraint. Run sets in run_order: highest capital first, so the most valuable accounts land in the CRM earliest.",
+
+  "common_filters": {
+    "jpStatusList": ["1"],
+    "jpTypeList": ["5", "7"]
+  },
+  "common_filters_meaning": {
+    "jpStatusList": "1 = ยังดำเนินกิจการอยู่ (operating)",
+    "jpTypeList": "5 = บริษัทจำกัด, 7 = บริษัทมหาชนจำกัด"
+  },
+
+  "sets": {
+    "set0_pilot": {
+      "label": "ทุน 5M-100,000M + รายได้ 100M+ + กำไร 10M+",
+      "filters": {
+        "capAmtMin": 5000000,
+        "capAmtMax": 100000000000,
+        "totalIncomeMin": 100000000,
+        "netProfitMin": 10000000
+      },
+      "estimate_companies": 27000,
+      "actual_companies": 31725,
+      "status": "collected",
+      "note": "The April 2026 dataset, already migrated into the store. A subset of sets 1-3."
+    },
+    "set1": {
+      "label": "ทุน 100M+",
+      "filters": { "capAmtMin": 100000001 },
+      "estimate_companies": 20000,
+      "estimate_pages": 2000,
+      "status": "pending"
+    },
+    "set2": {
+      "label": "ทุน 10M-100M",
+      "filters": { "capAmtMin": 10000001, "capAmtMax": 100000000 },
+      "estimate_companies": 52000,
+      "estimate_pages": 5200,
+      "status": "pending"
+    },
+    "set3": {
+      "label": "ทุน 5M-10M",
+      "filters": { "capAmtMin": 5000001, "capAmtMax": 10000000 },
+      "estimate_companies": 29000,
+      "estimate_pages": 2900,
+      "status": "pending"
+    },
+    "set4": {
+      "label": "ทุน 2M-5M",
+      "filters": { "capAmtMin": 2000001, "capAmtMax": 5000000 },
+      "estimate_companies": 181000,
+      "estimate_pages": 18100,
+      "status": "pending"
+    },
+    "set5": {
+      "label": "ทุน 1M-2M",
+      "filters": { "capAmtMin": 1000001, "capAmtMax": 2000000 },
+      "estimate_companies": 94000,
+      "estimate_pages": 9400,
+      "status": "pending"
+    },
+    "set6": {
+      "label": "ทุน 900k-1M",
+      "filters": { "capAmtMin": 900001, "capAmtMax": 1000000 },
+      "estimate_companies": 367000,
+      "estimate_pages": 36700,
+      "status": "pending",
+      "note": "Largest set by far. 1,000,000 baht is the default registered capital for Thai SMEs, so this single band is ~46% of the universe."
+    },
+    "set7": {
+      "label": "ทุน 0-900k",
+      "filters": { "capAmtMin": 0, "capAmtMax": 900000 },
+      "estimate_companies": 46000,
+      "estimate_pages": 4600,
+      "status": "pending"
+    }
+  },
+
+  "run_order": ["set1", "set2", "set3", "set4", "set5", "set6", "set7"],
+
+  "totals": {
+    "estimate_companies": 790000,
+    "estimate_pages": 79000,
+    "already_collected": 31725,
+    "multiple_of_april_job": 25
+  },
+
+  "design_notes": [
+    "Capital bands are non-overlapping by construction (each Min is the previous Max + 1), so sets 1-7 partition the universe exactly once on capital.",
+    "Sets 1-3 overlap set0 on capital, but the store merges on juristic_id, so re-fetching those rows is harmless - it updates last_seen_at and records any real change. The 'optimize to not intersect set0' idea is not worth implementing: the complement of (revenue>=100M AND profit>=10M) is (revenue<100M OR profit<10M), and the API filter model is AND-only, so it cannot be expressed as a single query.",
+    "Task 0.2 in the original plan (capital 5M-100,000M with revenue <100M and profit <10M) is made unnecessary by sets 1-3, which carry no revenue/profit filter and therefore already include those companies.",
+    "Sort order: the run_order itself delivers 'high to low'. Within a set, rows arrive partitioned by juristic-ID prefix rather than sorted globally, so a sortBy value does not change which companies are collected - only the order within a bucket. Sorting for presentation belongs in the export step, not the sweep.",
+    "Every set is swept using the same adaptive ID-prefix algorithm; only the capital filter changes."
+  ]
+}

@@ -612,3 +612,216 @@ All results are province-sorted (Bangkok: 59 companies, then กาญจนบ�
 - Current state to carry forward:
   - schema wiring confirmed,
   - full uninterrupted 3-page proof artifact still pending stable run window.
+
+## Latest Update (2026-09-16, Site Revalidation After 5-Month Gap + Broad-Query Guard Discovered)
+
+### Why this session happened
+First run of process `f` since 2026-04-10. Goal was to validate whether the
+April pipeline still works against the live site before building a CRM pipeline
+on top of it. It does not work unchanged — two independent blockers were found,
+diagnosed, and one requires a design change.
+
+### Blocker 1: Imperva block on stale session (SOLVED — config only)
+Symptom: `Access denied / Error 15` (Imperva) on the direct search URL, while the
+landing page loaded fine.
+
+Root cause was NOT a site change. `storage_state.json` dated 2026-04-10 carried:
+- `visid_incap_2466344` — persistent Imperva visitor ID, the same identity that
+  pulled ~32,000 records over 5 days in April
+- `incap_ses_193/357/355_2466344` — session-scoped cookies, dead server-side
+
+Presenting a live visitor ID whose session no longer resolves is a stronger bot
+signal than arriving with no cookies at all. This matches the long-standing
+guidance in `b_AI_Local_Context.md`: "If still blocked, delete storage_state.json
+and retry non-headless."
+
+Fixes applied (all config, no code change):
+- `use_storage_state: false` — archived stale file to `storage_state.stale_april.bak`
+- `prefer_direct_search_url: false` — `page.goto()` to a deep link with no Referer
+  is a bot signature; the search-box path mimics real use and passes
+- `channel: "chrome"` — configs were overriding the code's own `"chrome"` default
+  with bundled `chromium`
+
+Result: Imperva no longer blocks. Landing page, search box, search submit,
+API capture, decrypt and replay all work.
+
+### Blocker 2: Server-side broad-query guard (DESIGN CHANGE REQUIRED)
+Symptom: search for `บริษัท` returns `กรุณาระบุคำค้นหาให้เฉพาะเจาะจงมากขึ้น`
+("please be more specific"), `ไม่พบข้อมูล`, page 1/0. No rows -> no result table
+-> advanced filter panel never renders -> filter apply times out. This is why the
+run stalls at `Filter panel toggle not ready`.
+
+Probe utility added: `f_guard_probe.py` (report -> `dumps/f_guard_probe_report.json`).
+
+Measured behaviour (2026-09-16):
+
+| keyword | filters | rows | totalPages | HTTP | message |
+|---|---|---|---|---|---|
+| `โอสถสภา` | no | 10 | 3 | 200 | — |
+| `บริษัท` | no | 0 | — | 400 | be more specific |
+| `บริษัท` | yes | 0 | — | 400 | be more specific |
+| `""` | yes | 0 | — | 400 | Keyword must be at least 3 characters |
+| `บริษัท` + 1 province | yes | 0 | — | 400 | be more specific |
+| `ก` / `กร` | no | 0 | — | 400 | Keyword must be at least 3 characters |
+| `ก่อสร้าง` | no | 10 | 29,530 | 200 | — |
+| `ห้างหุ้นส่วน` | no | 10 | 66,985 | 200 | — |
+| `จำกัด` | no | 0 | — | 400 | be more specific |
+
+Conclusions:
+1. The guard is SERVER-SIDE on `/api/v1/company-profiles/infos` (HTTP 400), not a
+   UI-only check. It cannot be bypassed by driving the API directly.
+2. Filters do NOT rescue a blocked keyword — the guard runs before filtering.
+3. The guard is NOT result-count based. `ก่อสร้าง` (29,530 pages) and
+   `ห้างหุ้นส่วน` (66,985 pages) both pass. It is a narrow blocklist of generic
+   legal-form words: `บริษัท` and `จำกัด` are blocked, ordinary business
+   vocabulary is not.
+4. Minimum keyword length is 3 characters.
+
+### Consequence for process `f`
+The only broken assumption is the SEED KEYWORD. Everything downstream — API
+contract capture, JWT/HKDF/AES-GCM decrypt, filter payload construction,
+pagination, dedup, CSV/JSON export — was exercised during probing and still works.
+
+`search_term: "บริษัท"` in every config is now permanently non-functional.
+
+### Replacement strategy: TSIC business-type-code partition
+The search box accepts business type codes (placeholder: "ค้นหาด้วยชื่อหรือ
+เลขทะเบียนนิติบุคคล รหัสประเภทธุรกิจ"). Verified working as seeds:
+
+| seed | filters | page | rows | totalPages |
+|---|---|---|---|---|
+| `41002` | no | 1 | 10 | 124 |
+| `41002` | yes | 1 | 10 | 3 |
+| `45101` | no | 1 | 10 | 13 |
+| `47300` | yes | 1 | 2 | 1 |
+| `41002` | no | **50** | 10 | 124 |
+
+Filters compose on top of a code seed, and deep pagination is intact (page 50 of
+124 returned a full 10 rows).
+
+DISPROVED AS A PARTITION KEY (verified same day, `f_tsic_verify.py`):
+A TSIC-code seed does NOT cleanly select that business type, and is NOT exhaustive.
+
+- keyword `41002`, 30 rows sampled across pages 1, 2, 50 -> 21 distinct
+  `business_type_code` values; only 9/30 (30%) were actually `41002`.
+  Off-target examples: `69100` (law firm), `43210`, `47711`.
+- Count check: the archived April dataset holds 764 companies with
+  `business_type_code=41002` under the production filters, but
+  keyword `41002` + the same filters reports `totalPages=3` (~30 companies).
+  A ~25x shortfall.
+
+Likely cause: Thai companies register many "วัตถุประสงค์" (business objectives).
+The keyword appears to match against registered objective codes, which is neither
+equal to `business_type_code` nor complete with respect to it.
+
+Conclusion: TSIC codes are usable as *seeds that return data*, but they cannot be
+used to prove coverage. Do not build a completeness claim on them.
+
+### Partition requirement (clarified)
+The API requires a keyword that is >=3 characters and not blocklisted. Filters
+(`pvCodeList`, `jpTypeList`, capital/revenue ranges) only narrow what the keyword
+already matched — they cannot stand alone as partition keys. Any exhaustive
+partition must therefore be expressible as a *keyword*.
+
+### SOLUTION: juristic-ID prefix sweep (VERIFIED 2026-09-16)
+Probe: `f_idprefix_probe.py`. Thai juristic IDs are 13 digits structured as
+`0` + province(2) + type(1) + year(2) + sequence, e.g. `0107561000081`.
+
+Measured:
+
+| keyword | rows | totalPages | startswith | contains |
+|---|---|---|---|---|
+| `0105` | 10 | 70,406 | 10/10 | 10/10 |
+| `010756` | 10 | 50 | 10/10 | 10/10 |
+| `0107561` | 10 | 5 | 10/10 | 10/10 |
+| `0125` | 10 | 8,420 | 10/10 | 10/10 |
+| `0993` | 10 | 711 | 9/10 | 10/10 |
+
+Key properties:
+1. Matching is SUBSTRING, not prefix — `0993` returned `01055550993 71`, which
+   contains the digits mid-ID. This is favourable: searching prefix `P` returns a
+   SUPERSET of companies whose ID starts with `P`, so filtering locally with
+   `startswith(P)` yields exactly that bucket with nothing missed.
+2. Every company has exactly one 13-digit ID, so the union over prefixes covers
+   the registry exactly once — completeness is provable, unlike the TSIC attempt.
+3. Bucket size shrinks roughly 10x per added digit, so job size is tunable.
+
+Recommended algorithm — ADAPTIVE PREFIX SWEEP:
+- start from 4-digit prefixes (`0` + province + type)
+- request page 1, read `totalPages`
+- if `totalPages` exceeds the per-job budget, descend by appending digits 0-9
+- otherwise page through the bucket and keep rows where `juristic_id` starts with
+  the prefix
+- each leaf bucket is an independent, resumable unit of work
+
+Why this is structurally better than the April single-keyword design:
+- a crash costs one small bucket, not a 3,000-page position (the 2026-04-10
+  failure mode)
+- coverage is provable rather than inferred from a `rows < 10` stop condition
+- per-session volume stays low, reducing the Imperva visitor-ID pressure that
+  caused Blocker 1
+- incremental top-ups can re-run only selected prefixes
+
+### Existing data position (verified 2026-09-16)
+Archived outside the repo at `Downloads/DBD Data/DBD Data Set 0/` (18 CSVs,
+tracked by `AI_CSVsTracking.md`):
+- 32,260 raw rows / **31,725 unique juristic_ids** / 535 overlap duplicates
+- covers pages 1–3181 of the April filtered run; genuine gaps are only pages 232–233
+- in-repo `f_search_result.json` holds only page 1 + pages 3060–3181 (1,230 rows)
+  and `result_packed.csv` was truncated to 10 rows by the 2026-04-10 crash run
+
+Known accumulation bug: `IncrementalCSVWriter` opens with mode `"w"` (f_main.py
+line ~117), so every run truncates. `resume_from_page` resumes fetching but
+nothing merges prior sessions. Manual archiving to Downloads is currently the
+only thing preventing data loss.
+
+### Open items
+1. Confirm whether a TSIC-code seed matches only that business type or also
+   substring-matches names (affects cost, not completeness).
+2. Decide seed source for full coverage: official TSIC code list vs the 862 codes
+   already observed.
+3. Fix `"w"` -> append/merge accumulation, or move the system of record to a
+   database keyed on `juristic_id`.
+4. Reuse `is_blocked_text()` from process `b` in `f` so Imperva pages fail fast
+   instead of burning `results_timeout_seconds * stuck_refresh_retries`.
+5. Config key typos still present in `f_local_config.temp_prod.json`:
+   `usui_probe_rows_on_api_failure`, `forcee__ui_probe_rows_for_test`.
+
+### Sweep sizing (measured 2026-09-16)
+Live API, production filters applied:
+
+| prefix | filters | totalPages | on-prefix rows |
+|---|---|---|---|
+| `0105` | no | 70,406 | 10/10 |
+| `0105` | yes | 1,702 | 10/10 |
+| `010556` | yes | 289 | 10/10 |
+| `0107561` | yes | 4 | 10/10 |
+| `0125` | yes | 106 | 9/10 |
+| `0203` | yes | 6 | 0/10 |
+
+Filters compose with ID-prefix keywords and cut `0105` by ~41x
+(70,406 -> 1,702 pages).
+
+Cross-validation against the archived April dataset (31,725 unique ids):
+- archive implies `0105` ~1,673 pages; live API reports 1,702 (1.7% delta)
+- archive implies a full filtered sweep of ~3,208 pages; the April run took 3,188
+Two independent sources agreeing within 2% confirms the prefix sweep recovers the
+same universe, and that DBD filter behaviour is unchanged since April.
+
+Prefix space derived from the archive: 78 distinct 4-digit prefixes.
+- `0105` (Bangkok, limited company) = 16,726 companies / ~1,702 pages — the only
+  bucket large enough to need descent (split into `01050`-`01059`, ~170 pages each)
+- 48 of 78 buckets hold <=100 companies (<=10 pages)
+- total ~3,200 pages, i.e. the same work as April but in 78+ resumable units
+
+Operational caveat: sparse buckets can return rows where NONE start with the
+prefix (`0203` -> 0/10 on-prefix across 6 pages), because matching is substring.
+The sweep should read `totalPages` first and abandon buckets with no on-prefix
+yield rather than paging them fully.
+
+### Probe utilities added this session
+- `f_guard_probe.py` -> `dumps/f_guard_probe_report.json` (keyword guard behaviour)
+- `f_tsic_verify.py` (disproved the TSIC partition idea)
+- `f_idprefix_probe.py` (verified ID-prefix substring matching)
+- `f_sweep_size_probe.py` (filter composition + sweep sizing)
+- `f_local_config.smoke_test.json` (2-page non-headless validation config)

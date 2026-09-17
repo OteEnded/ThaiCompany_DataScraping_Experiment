@@ -1,4 +1,5 @@
 {
+  "_DISABLED": "NON-FUNCTIONAL as of 2026-09-16. DBD blocks the seed keyword 'บริษัท' server-side with HTTP 400 (กรุณาระบุคำค้นหาให้เฉพาะเจาะจงมากขึ้น). The guard runs before filters, so this config cannot work. Use g_DBD_CRM_Pipeline/g_sweep.py (juristic-ID prefix sweep) instead. Kept for reference only - see f_AI_Local_Context.md.",
   "search_term": "บริษัท",
   "query": "บริษัท",
   "sort_label": "",
@@ -12,14 +13,14 @@
   "fetch_all_max_pages": 3300,
   "stuck_refresh_retries": 4,
   "api_replay_attempt_threshold": 2,
-  "resume_from_page": 1,
+  "resume_from_page": 3060,
   "track_progress_in_config": true,
   "runtime_progress": {
-    "last_page_extracted": 0,
-    "updated_at": ""
+    "last_page_extracted": 3181,
+    "updated_at": "2026-04-10T17:30:53"
   },
-  "use_ui_probe_rows_on_api_failure": true,
-  "force_ui_probe_rows_for_test": false,
+  "usui_probe_rows_on_api_failure": true,
+  "forcee__ui_probe_rows_for_test": false,
   "storage_state": "storage_state.json",
   "use_storage_state": true,
   "filters": {
@@ -40,5 +41,6 @@
     "net_profit_max": null,
     "assets_min": null,
     "assets_max": null
-  }
+  },
+  "last_page_extracted": 3181
 }

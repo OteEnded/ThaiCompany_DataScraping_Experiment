@@ -61,3 +61,21 @@ f_DBD_Company_List_Scraper_WIth_Filter/chrome_profile/
 f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.json
 f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.html
 f_DBD_Company_List_Scraper_WIth_Filter/dumps/*.png
+
+# Process g - CRM pipeline store and exports (data, never committed)
+g_DBD_CRM_Pipeline/*.sqlite3
+g_DBD_CRM_Pipeline/*.sqlite3-wal
+g_DBD_CRM_Pipeline/*.sqlite3-shm
+g_DBD_CRM_Pipeline/crm_companies.csv
+g_DBD_CRM_Pipeline/crm_companies.json
+g_DBD_CRM_Pipeline/exports/
+
+# Process f - archived stale session state
+f_DBD_Company_List_Scraper_WIth_Filter/storage_state.stale_april.bak
+
+# Runtime artifacts - process f probes and process g sweep
+f_DBD_Company_List_Scraper_WIth_Filter/last_run.log
+f_DBD_Company_List_Scraper_WIth_Filter/last_page_*.png
+f_DBD_Company_List_Scraper_WIth_Filter/f_search_result_crash.json
+g_DBD_CRM_Pipeline/sweep*.log
+g_DBD_CRM_Pipeline/nohup.out
