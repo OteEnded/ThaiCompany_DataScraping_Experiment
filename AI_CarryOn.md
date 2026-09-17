@@ -1,7 +1,7 @@
 # AI_CarryOn.md — Project Context Dump
 
 > **Purpose:** Full context handoff for any AI agent continuing work on this repository.
-> Last updated: 2026-09-17 (sets 1-2 collected: 83k companies; server handoff prepared - see g_DBD_CRM_Pipeline/SERVER_HANDOFF.md). Previously 2026-09-16 (site revalidated after 5-month gap: Imperva stale-session block solved; DBD broad-query guard discovered — `บริษัท` seed is permanently blocked; ID-prefix sweep verified as replacement). Repository: `ThaiCompany_DataScraping_Experiment`
+> Last updated: 2026-09-17 (sets 1-3 COMPLETE and verified: 107,941 companies; server handoff prepared - see g_DBD_CRM_Pipeline/SERVER_HANDOFF.md). Previously 2026-09-16 (site revalidated after 5-month gap: Imperva stale-session block solved; DBD broad-query guard discovered — `บริษัท` seed is permanently blocked; ID-prefix sweep verified as replacement). Repository: `ThaiCompany_DataScraping_Experiment`
 
 ## How to Use This File
 
@@ -460,3 +460,6 @@ python f_DBD_Company_List_Scraper_WIth_Filter/f_main.py --config f_DBD_Company_L
 - 2026-09-17: Measured operating envelope: API page size hard-locked at 10 rows; safe rate ~20 pages/min (1200ms page delay tripped 429 after 23 min, 1800ms did not); JWT TTL ~15 min so re-seed at 540s; throughput ~150 new records/min; set2 on-prefix efficiency 83%.
 - 2026-09-17: Documented a sparse-prefix inefficiency (a 4-digit prefix substring-matches mid-ID, so `0555` cost ~900 pages for ~30 rows) and a possible `pvCodeList` optimization that is deliberately NOT applied because it would silently drop relocated companies. See SERVER_HANDOFF.md.
 - 2026-09-17: Added `g_DBD_CRM_Pipeline/SERVER_HANDOFF.md` and `HOW_IT_WORKS.md`; marked `f_local_config.temp_prod.json` as non-functional (its seed keyword is blocked).
+- 2026-09-17: **Sets 1-3 complete and verified.** 107,941 companies (April baseline 31,725, +76,216 collected), 110,501 change records, 13,602 pages fetched, 0 duplicate juristic_ids. Verification passed on every check: no unresolved buckets in any set, 78/78 seed prefixes resolved per set, all 26 split parents have 10 resolved children, `PRAGMA integrity_check` ok. Capital bands landed within 3.3% of the planning estimates (set1 19,966/20,000; set2 53,059/52,000; set3 29,965/29,000). The store covers every operating Thai company (บริษัทจำกัด + บริษัทมหาชนจำกัด) with registered capital >=5M.
+- 2026-09-17: Sixth production failure class found and fixed: the workstation slept mid-run and Playwright's `net::ERR_NETWORK_CHANGED` was re-raised rather than treated as recoverable, ending the run. Chromium net errors are now classified as session-dead, and `SweepSession.open()` retries 3x with 15s/45s/90s backoff.
+- 2026-09-17: Store WAL-checkpointed (100.6 MB, self-contained) and `crm_companies.csv` exported (107,941 rows, 57.9 MB), ready to move to a server.

@@ -153,16 +153,26 @@ throughput gets worse, not better.
 ## State as of this handoff (2026-09-17)
 
 ```
-companies        ~83,000 and climbing
-changes logged   ~95,000
-set1  ✅ complete   2,674 pages · 19,939 rows
-set2  ✅ complete   6,920 pages · 53,038 rows
-set3  🔄 running    ~3,900 pages estimated
-set4-7   not started (~688,000 companies, ~76 hours at 150 rec/min)
+companies        107,941        <- sets 1-3 COMPLETE and verified
+collected today   76,216        (April baseline was 31,725)
+changes logged   110,501
+duplicate ids          0
+
+set1  ✅ complete   2,674 pages · 19,939 rows · 19,966 in band (est 20,000)
+set2  ✅ complete   6,920 pages · 53,038 rows · 53,059 in band (est 52,000)
+set3  ✅ complete   4,008 pages · 29,965 in band (est 29,000)
+set4-7   not started (~688,000 companies, ~76 hours at ~150 rec/min)
 ```
 
-Expected end state for sets 1–3: **~105,000 companies** — every operating Thai
-company (บริษัทจำกัด + บริษัทมหาชนจำกัด) with registered capital ≥5M.
+Verification run 2026-09-17, all checks PASS:
+- no `running`/`partial`/`error` buckets in any set
+- all 78 seed prefixes resolved in each of set1/set2/set3
+- all 26 split parents have 10 resolved children
+- 0 duplicate juristic_ids; `PRAGMA integrity_check` = ok
+- all three capital bands within 3.3% of the planning estimates
+
+Sets 1-3 now cover every operating Thai company (บริษัทจำกัด + บริษัทมหาชนจำกัด)
+with registered capital ≥5M. The store is WAL-checkpointed and self-contained.
 
 ---
 
@@ -185,6 +195,14 @@ company (บริษัทจำกัด + บริษัทมหาชน�
 
 2. **No mid-bucket resume.** An interrupted bucket restarts from page 1. Capped at
    200 pages, so worst case ~10 minutes of re-fetching.
+
+2b. **Network drops are handled, but note why.** On 2026-09-17 the workstation
+   slept mid-run; Playwright raised `net::ERR_NETWORK_CHANGED` during a token
+   re-seed and it propagated past the sweep's handler, ending the run. Chromium
+   net errors are now classified as recoverable (discard the browser, open a new
+   one) and `SweepSession.open()` retries 3x with 15s/45s/90s backoff so a blip
+   does not kill a long run. Relevant on a server too - VPN flaps and transient
+   DNS failures produce the same errors.
 
 3. **Stage 2 enrichment unbuilt.** Process `b` returns 88 fields including
    address, phone, email and directors — but on the one company sampled

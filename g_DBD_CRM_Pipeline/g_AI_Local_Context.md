@@ -131,3 +131,47 @@ Sizing (measured against the live API, production filters applied):
 6. Sparse multi-page buckets are swept in full rather than sampled, which
    costs some wasted fetches. That is the deliberate price of not risking
    dropped rows; see the `empty` rule above.
+
+## Collection result (2026-09-17) — sets 1-3 COMPLETE
+
+```
+companies        107,941   (April baseline 31,725, +76,216 collected)
+change records   110,501
+pages fetched     13,602
+duplicate ids          0
+```
+
+| set | band | pages | in band | estimate |
+|---|---|---|---|---|
+| set1 | ทุน 100M+ | 2,674 | 19,966 | 20,000 |
+| set2 | ทุน 10M-100M | 6,920 | 53,059 | 52,000 |
+| set3 | ทุน 5M-10M | 4,008 | 29,965 | 29,000 |
+
+Verification: no unresolved buckets, 78/78 seed prefixes per set, all 26 split
+parents have 10 resolved children, 0 duplicate ids, integrity_check ok.
+
+### Failure classes found in production and now handled
+1. NULL/DEFAULT insert crash (`record()` built its INSERT with explicit NULLs)
+2. `TargetClosedError` on browser close - the same failure that killed the
+   2026-04-10 run at page 3060
+3. JWT expiry at ~15 min (HTTP 401) - was SILENTLY marking buckets `error`;
+   the most dangerous of the six because the run would have "succeeded"
+4. single-shot request timeouts (`replay_infos_request` has no retry of its own)
+5. HTTP 429 rate limiting - a ~2 min cooldown, verified by probe, not a quota
+6. `net::ERR_*` network drops (machine sleep / VPN flap) were re-raised instead
+   of treated as recoverable; now classified as session-dead, and
+   `SweepSession.open()` retries 3x with 15s/45s/90s backoff
+
+### Measured operating envelope
+- API page size hard-locked at 10 (`pageSize`/`size`/`limit`/`perPage`/
+  `rowsPerPage`/`itemsPerPage` all ignored)
+- JWT TTL ~15 min -> re-seed at 540s
+- safe rate ~20 pages/min; 1200ms page delay tripped 429 after 23 min, 1800ms did not
+- throughput ~150 new records/min, peak 232
+- session rotation every 1500 pages; observed clean at 29-35s each
+
+### Next
+Sets 4-7 remain (~688,000 companies, ~76 hours). Before running them, evaluate
+the `pvCodeList` per-bucket optimization described in `SERVER_HANDOFF.md` - it
+could cut sparse-prefix waste substantially but risks dropping companies that
+relocated province since registration.

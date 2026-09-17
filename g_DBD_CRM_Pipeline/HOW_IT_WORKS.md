@@ -119,6 +119,7 @@ have hit an unattended overnight run.
 | B3 | 12 buckets silently marked `error` in 30s | DBD's JWT expires after **~15 min**; HTTP 401 was treated as a bucket failure instead of a session event | **silent data loss** |
 | B4 | one slow response ends a bucket | `replay_infos_request` is single-shot with no retry, unlike `f_main`'s own paging loop | data loss |
 | B5 | 8 buckets discarded in 31s | HTTP 429 rate limit treated as a bucket failure | data loss |
+| B6 | run ended at 107,937 records | the workstation slept; `net::ERR_NETWORK_CHANGED` during a token re-seed was re-raised rather than treated as recoverable | crash |
 
 **B3 is the dangerous one.** The run would not have crashed. It would have
 finished, reported success, and left a store missing most of the data while
@@ -289,11 +290,13 @@ flowchart TD
     B -->|"-2 / -1 / 5xx<br/>transient"| F["backoff 1.5s → 3s → 4.5s<br/>retry, max 4"]
     B -->|Imperva block page| G["rotate identity<br/>45s cooldown<br/>retry bucket once"]
     B -->|browser gone| H["reopen session<br/>retry bucket once"]
+    B -->|"net::ERR_* <br/>network dropped"| I["reopen session<br/>retry 3x, 15/45/90s"]
     D --> A
     E --> A
     F --> A
     G --> A
     H --> A
+    I --> A
 ```
 
 **Measured constants** (all determined empirically today):
@@ -365,9 +368,9 @@ construction (each `Min` = previous `Max` + 1).
 | set | capital band | est. companies | status |
 |---|---|---|---|
 | set0 | 5M–100,000M + revenue ≥100M + profit ≥10M | 31,725 | the April dataset — a *subset* of sets 1–3 |
-| **set1** | ทุน 100M+ | ~20,000 | ✅ **done** — 19,939 rows, 2,674 pages, 138 buckets |
-| **set2** | ทุน 10M–100M | ~52,000 | 🔄 running |
-| **set3** | ทุน 5M–10M | ~29,000 | queued |
+| **set1** | ทุน 100M+ | ~20,000 | ✅ **done** — 19,966 in band, 2,674 pages |
+| **set2** | ทุน 10M–100M | ~52,000 | ✅ **done** — 53,059 in band, 6,920 pages |
+| **set3** | ทุน 5M–10M | ~29,000 | ✅ **done** — 29,965 in band, 4,008 pages |
 | set4 | ทุน 2M–5M | ~181,000 | not started |
 | set5 | ทุน 1M–2M | ~94,000 | not started |
 | set6 | ทุน 900k–1M | ~367,000 | not started — 46% of the whole plan |
@@ -423,10 +426,20 @@ runs. Export once the run finishes.
 | metric | value |
 |---|---|
 | throughput | ~3.0 s/page, ~20 pages/min |
-| new records | ~141/min (peak 190) |
+| new records | ~150/min (peak 232) |
 | rows per page | 9.83 useful (10 fetched) |
-| on-prefix efficiency | 76% for 4-digit prefixes, 96–100% for 6–7 digit |
-| set1 actual | 2,674 pages → 19,939 rows |
+| on-prefix efficiency | 76–83% overall; 96–100% at 6–7 digit depth |
+| set1 actual | 2,674 pages → 19,966 in band (est 20,000) |
+| set2 actual | 6,920 pages → 53,059 in band (est 52,000) |
+| set3 actual | 4,008 pages → 29,965 in band (est 29,000) |
+| **total** | **13,602 pages → 107,941 companies** |
+
+### Final verification (2026-09-17) — all checks pass
+- no `running`/`partial`/`error` buckets in any set
+- all 78 seed prefixes resolved in each of set1/set2/set3
+- all 26 split parents have 10 resolved children
+- 0 duplicate `juristic_id`; `PRAGMA integrity_check` = ok
+- every capital band within 3.3% of its planning estimate
 
 **Why efficiency varies:** short prefixes catch more mid-ID substring matches.
 `0475` returned 3 useful rows from 18 fetched; `010552` returned 1,707 from 1,707.

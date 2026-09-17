@@ -61,9 +61,31 @@ _DEAD_MARKERS = (
     "page closed",
 )
 
+# Chromium network failures. These are recoverable the same way a dead session
+# is - throw the browser away and open a new one - but they arrive as a plain
+# playwright Error, not a close. On 2026-09-17 an ERR_NETWORK_CHANGED during a
+# token re-seed (laptop switching networks) propagated past the sweep's handler
+# and ended the run at 107,937 records.
+_NETWORK_MARKERS = (
+    "err_network_changed",
+    "err_internet_disconnected",
+    "err_name_not_resolved",
+    "err_connection_reset",
+    "err_connection_refused",
+    "err_connection_timed_out",
+    "err_connection_closed",
+    "err_address_unreachable",
+    "err_proxy_connection_failed",
+    "err_network_io_suspended",
+    "err_empty_response",
+    "net::err_",  # catch-all for other chromium net errors
+)
+
 
 def is_session_dead(exc: BaseException) -> bool:
-    return any(m in str(exc).lower() for m in _DEAD_MARKERS)
+    """True for anything fixable by discarding the browser and opening a new one."""
+    s = str(exc).lower()
+    return any(m in s for m in _DEAD_MARKERS) or any(m in s for m in _NETWORK_MARKERS)
 
 
 def looks_blocked(res: dict) -> bool:
@@ -112,13 +134,26 @@ class SweepSession:
         self.session_index = 0
         self.reseed_count = 0
 
-    def open(self) -> bool:
-        try:
-            return self._open()
-        except Exception as exc:
-            self.log(f"  session open failed: {str(exc)[:120]}")
-            self.close()
-            return False
+    def open(self, attempts: int = 3) -> bool:
+        """Open a session, retrying patiently on network failures.
+
+        A network blip that kills one open will usually kill an immediate retry
+        too, so back off before trying again rather than burning all attempts in
+        a second.
+        """
+        backoffs = (15, 45, 90)
+        for i in range(attempts):
+            try:
+                return self._open()
+            except Exception as exc:
+                self.log(f"  session open failed: {str(exc)[:110]}")
+                self.close()
+                if i == attempts - 1:
+                    return False
+                wait = backoffs[min(i, len(backoffs) - 1)]
+                self.log(f"  retrying session open in {wait}s ({i + 2}/{attempts})")
+                time.sleep(wait)
+        return False
 
     def _open(self) -> bool:
         self.session_index += 1
